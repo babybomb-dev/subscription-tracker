@@ -12,11 +12,14 @@ import {
     collection,
     addDoc,
     getDocs,
+    getDoc,
+    setDoc,
     updateDoc,
     deleteDoc,
     doc,
     query,
-    where
+    where,
+    orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ==========================================
@@ -52,7 +55,9 @@ const headerAvatarImg = document.getElementById('header-avatar-img');
 // Form & Inputs
 const subForm = document.getElementById('sub-form');
 const customNameContainer = document.getElementById('custom-name-container');
+const tierContainer = document.getElementById('tier-container');
 const subName = document.getElementById('sub-name');
+const subTier = document.getElementById('sub-tier');
 const subPrice = document.getElementById('sub-price');
 const subCurrency = document.getElementById('sub-currency');
 const subExtraPrice = document.getElementById('sub-extra-price');
@@ -61,6 +66,7 @@ const subCategory = document.getElementById('sub-category');
 const subDate = document.getElementById('sub-date');
 
 const subIsActive = document.getElementById('sub-is-active');
+const subNote = document.getElementById('sub-note');
 const submitBtnText = document.getElementById('submit-btn-text');
 const submitBtn = document.getElementById('submit-btn');
 const formError = document.getElementById('form-error');
@@ -68,6 +74,7 @@ const formError = document.getElementById('form-error');
 // List & Controls
 const subCountEl = document.getElementById('sub-count');
 const sortSub = document.getElementById('sort-sub');
+const searchSub = document.getElementById('search-sub');
 const subList = document.getElementById('sub-list');
 const subCalendar = document.getElementById('sub-calendar');
 const listControlsContainer = document.getElementById('list-controls-container');
@@ -76,6 +83,10 @@ const chartSection = document.getElementById('chart-section');
 const chartViewAppBtn = document.getElementById('chart-view-app');
 const chartViewCategoryBtn = document.getElementById('chart-view-category');
 
+const subIsFreeTrial = document.getElementById('sub-is-freetrial');
+const subDateLabel = document.getElementById('sub-date-label');
+const resumeDateContainer = document.getElementById('resume-date-container');
+const subResumeDate = document.getElementById('sub-resume-date');
 let chartViewMode = localStorage.getItem('chartViewMode') || 'app'; // Default to app if no preference
 
 // Calendar state
@@ -119,8 +130,12 @@ const profileNameInput = document.getElementById('profile-name');
 const profilePhotoUrlInput = document.getElementById('profile-photo-url');
 const saveProfileBtn = document.getElementById('save-profile-btn');
 const exportCsvBtn = document.getElementById('export-csv-btn');
+const exportIcsBtn = document.getElementById('export-ics-btn');
 
-exportCsvBtn.addEventListener('click', () => {
+if(exportCsvBtn) exportCsvBtn.addEventListener('click', exportToCSV);
+if(exportIcsBtn) exportIcsBtn.addEventListener('click', exportToICS);
+
+function exportToCSV() {
     if (subscriptions.length === 0) {
         alert('ไม่มีข้อมูลให้ดาวน์โหลด');
         return;
@@ -149,7 +164,7 @@ exportCsvBtn.addEventListener('click', () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-});
+}
 const profileError = document.getElementById('profile-error');
 const profileSuccess = document.getElementById('profile-success');
 const profileModalImg = document.getElementById('profile-modal-img');
@@ -159,12 +174,69 @@ const profileModalInitial = document.getElementById('profile-modal-initial');
 // 2. State Variables
 // ==========================================
 let currentUserId = null;
+let userSettings = { budget: 0 };
 let subscriptions = [];
 let isYearlyView = false;
 let editTargetId = null; // Use Firestore document ID instead of array index
 let myChart = null;
+
+// Exchange Rate
+let exchangeRateTHB = 35; // Default fallback
+let isExchangeRateLoaded = false;
 let isLoginMode = true; // For Auth toggle
 let deleteTargetId = null;
+
+// Cancellation Links
+const cancellationLinks = {
+    'Netflix': 'https://www.netflix.com/cancelplan',
+    'Spotify': 'https://www.spotify.com/account/cancel/',
+    'Apple iCloud': 'https://support.apple.com/th-th/HT202039',
+    'Google Drive': 'https://one.google.com/settings/cancel',
+    'Disney+': 'https://www.disneyplus.com/account/cancel-subscription',
+    'YouTube Premium': 'https://www.youtube.com/paid_memberships',
+    'Canva': 'https://www.canva.com/settings/billing-and-teams',
+    'ChatGPT': 'https://chat.openai.com/#settings/Billing',
+    'Microsoft 365': 'https://account.microsoft.com/services'
+};
+
+// Subscription Tiers (Prices in THB)
+const serviceTiers = {
+    'Netflix': [
+        { name: 'Mobile', price: 99 },
+        { name: 'Basic', price: 169 },
+        { name: 'Standard', price: 349 },
+        { name: 'Premium', price: 419 }
+    ],
+    'Spotify': [
+        { name: 'Student', price: 79 },
+        { name: 'Individual', price: 149 },
+        { name: 'Duo', price: 209 },
+        { name: 'Family', price: 249 }
+    ],
+    'YouTube Premium': [
+        { name: 'Premium Lite', price: 119 },
+        { name: 'Student', price: 129 },
+        { name: 'Individual', price: 199 },
+        { name: 'Family', price: 399 },
+        { name: 'Individual (รายปี)', price: 1990 }
+    ],
+    'Disney+': [
+        { name: 'Standard (รายเดือน)', price: 199 },
+        { name: 'Standard (รายปี)', price: 1590 },
+        { name: 'Premium (รายเดือน)', price: 289 },
+        { name: 'Premium (รายปี)', price: 2290 }
+    ],
+    'Apple iCloud': [
+        { name: '50 GB', price: 35 },
+        { name: '200 GB', price: 99 },
+        { name: '2 TB', price: 349 }
+    ],
+    'Google Drive': [
+        { name: 'Basic (100 GB)', price: 70 },
+        { name: 'Standard (200 GB)', price: 99 },
+        { name: 'Premium (2 TB)', price: 350 }
+    ]
+};
 
 // ==========================================
 // 3. Initialization & Auth Handlers
@@ -176,11 +248,144 @@ onAuthStateChanged(auth, async (user) => {
         currentUserId = user.uid;
         updateHeaderProfile(user);
         showScreen('app');
+        await migrateAndInitializeUser();
         await fetchSubs();
     } else {
         currentUserId = null;
+        userSettings = { budget: 0 };
         subscriptions = [];
         showScreen('auth');
+    }
+});
+
+async function migrateAndInitializeUser() {
+    try {
+        const userRef = doc(db, "users", currentUserId);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists()) {
+            await setDoc(userRef, { budget: 0, migratedV2: false });
+            userSettings = { budget: 0 };
+        } else {
+            userSettings = userSnap.data();
+            if (userSettings.budget === undefined) {
+                userSettings.budget = 0;
+            }
+        }
+        
+        // Render budget UI
+        renderBudgetUI();
+        
+        if (!userSettings.migratedV2) {
+            console.log("Migrating old subscriptions to new schema...");
+            const oldSubsRef = collection(db, "subscriptions");
+            const q = query(oldSubsRef, where("userId", "==", currentUserId));
+            const querySnapshot = await getDocs(q);
+            
+            const newSubsRef = collection(db, "users", currentUserId, "subscriptions");
+            for (const document of querySnapshot.docs) {
+                const data = document.data();
+                await setDoc(doc(newSubsRef, document.id), data);
+                // Optionally delete old: await deleteDoc(doc(db, "subscriptions", document.id));
+            }
+            
+            await updateDoc(userRef, { migratedV2: true });
+            console.log("Migration complete.");
+        }
+    } catch (e) {
+        console.error("Error migrating user:", e);
+    }
+}
+
+async function updateBudget(newBudget) {
+    try {
+        const userRef = doc(db, "users", currentUserId);
+        await updateDoc(userRef, { budget: newBudget });
+        userSettings.budget = newBudget;
+        renderBudgetUI();
+    } catch (e) {
+        console.error("Error updating budget:", e);
+    }
+}
+
+function calculateTotalMonthly() {
+    let total = 0;
+    subscriptions.forEach(sub => {
+        if (sub.isActive === false || sub.isFreeTrial) return;
+        const isUSD = sub.currency === 'USD';
+        const priceInThb = isUSD ? (sub.price * exchangeRateTHB) : sub.price;
+        const extraPriceInThb = isUSD ? (sub.extraPrice * exchangeRateTHB) : (sub.extraPrice || 0);
+        let monthly = 0;
+        if (sub.cycle === 'yearly') {
+            monthly = (priceInThb + extraPriceInThb) / 12;
+        } else {
+            monthly = priceInThb + extraPriceInThb;
+        }
+        total += monthly;
+    });
+    return total;
+}
+
+function renderBudgetUI() {
+    const budgetInput = document.getElementById('budget-input');
+    const currentSpendEl = document.getElementById('budget-current-spend');
+    const percentageEl = document.getElementById('budget-percentage');
+    const progressBar = document.getElementById('budget-progress-bar');
+    const warningText = document.getElementById('budget-warning-text');
+    
+    if (!budgetInput) return;
+
+    const budget = userSettings.budget || 0;
+    if (document.activeElement !== budgetInput) {
+        budgetInput.value = budget > 0 ? budget : '';
+    }
+    
+    const currentSpend = calculateTotalMonthly();
+    currentSpendEl.innerText = Math.round(currentSpend).toLocaleString();
+    
+    if (budget > 0) {
+        const percentage = Math.min(100, Math.round((currentSpend / budget) * 100));
+        percentageEl.innerText = `${percentage}%`;
+        progressBar.style.width = `${percentage}%`;
+        
+        if (percentage >= 100) {
+            progressBar.classList.remove('bg-indigo-500');
+            progressBar.classList.add('bg-rose-500');
+            percentageEl.classList.remove('bg-indigo-100', 'text-indigo-600', 'dark:bg-indigo-900/50', 'dark:text-indigo-400');
+            percentageEl.classList.add('bg-rose-100', 'text-rose-600', 'dark:bg-rose-900/50', 'dark:text-rose-400');
+            warningText.classList.remove('hidden');
+        } else if (percentage >= 80) {
+            progressBar.classList.remove('bg-indigo-500', 'bg-rose-500');
+            progressBar.classList.add('bg-amber-500');
+            percentageEl.classList.remove('bg-indigo-100', 'text-indigo-600', 'dark:bg-indigo-900/50', 'dark:text-indigo-400', 'bg-rose-100', 'text-rose-600', 'dark:bg-rose-900/50', 'dark:text-rose-400');
+            percentageEl.classList.add('bg-amber-100', 'text-amber-600', 'dark:bg-amber-900/50', 'dark:text-amber-400');
+            warningText.classList.add('hidden');
+        } else {
+            progressBar.classList.remove('bg-rose-500', 'bg-amber-500');
+            progressBar.classList.add('bg-indigo-500');
+            percentageEl.classList.remove('bg-rose-100', 'text-rose-600', 'dark:bg-rose-900/50', 'dark:text-rose-400', 'bg-amber-100', 'text-amber-600', 'dark:bg-amber-900/50', 'dark:text-amber-400');
+            percentageEl.classList.add('bg-indigo-100', 'text-indigo-600', 'dark:bg-indigo-900/50', 'dark:text-indigo-400');
+            warningText.classList.add('hidden');
+        }
+    } else {
+        percentageEl.innerText = '0%';
+        progressBar.style.width = '0%';
+        progressBar.classList.remove('bg-rose-500', 'bg-amber-500');
+        progressBar.classList.add('bg-indigo-500');
+        warningText.classList.add('hidden');
+        percentageEl.classList.remove('bg-rose-100', 'text-rose-600', 'dark:bg-rose-900/50', 'dark:text-rose-400', 'bg-amber-100', 'text-amber-600', 'dark:bg-amber-900/50', 'dark:text-amber-400');
+        percentageEl.classList.add('bg-indigo-100', 'text-indigo-600', 'dark:bg-indigo-900/50', 'dark:text-indigo-400');
+    }
+}
+
+// Attach event listener when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    const budgetInput = document.getElementById('budget-input');
+    if (budgetInput) {
+        budgetInput.addEventListener('change', (e) => {
+            const newBudget = Number(e.target.value) || 0;
+            updateBudget(newBudget);
+        });
     }
 });
 
@@ -440,8 +645,8 @@ profileForm.addEventListener('submit', async (e) => {
 async function fetchSubs() {
     if (!currentUserId) return;
     try {
-        const subsRef = collection(db, "subscriptions");
-        const q = query(subsRef, where("userId", "==", currentUserId));
+        const subsRef = collection(db, "users", currentUserId, "subscriptions");
+        const q = query(subsRef, orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
 
         subscriptions = [];
@@ -449,11 +654,100 @@ async function fetchSubs() {
             subscriptions.push({ id: doc.id, ...doc.data() });
         });
 
-        // Default sort: newest first (since we don't have createdAt, we keep order of fetch, or sort by date)
+        let hasAutoResumed = false;
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        for (let sub of subscriptions) {
+            if (sub.isActive === false && sub.resumeDate) {
+                const rDate = new Date(sub.resumeDate);
+                rDate.setHours(0,0,0,0);
+                if (today >= rDate) {
+                    sub.isActive = true;
+                    sub.resumeDate = null;
+                    hasAutoResumed = true;
+                    try {
+                        const docRef = doc(db, "users", currentUserId, "subscriptions", sub.id);
+                        await updateDoc(docRef, { isActive: true, resumeDate: null });
+                    } catch (e) { console.error("Auto-resume error:", e); }
+                }
+            }
+        }
+
         updateDOM();
+        
+        if (hasAutoResumed) {
+            console.log("Some subscriptions were auto-resumed today.");
+        }
     } catch (error) {
         console.error("Error fetching subscriptions:", error);
     }
+}
+
+window.convertFreeTrial = async function(id, isPaid) {
+    if (!currentUserId) return;
+    const sub = subscriptions.find(s => s.id === id);
+    if (!sub) return;
+    
+    let updates = {};
+    if (isPaid) {
+        updates = { isFreeTrial: false };
+        sub.isFreeTrial = false;
+    } else {
+        updates = { isActive: false, isFreeTrial: false, resumeDate: null };
+        sub.isActive = false;
+        sub.isFreeTrial = false;
+        sub.resumeDate = null;
+    }
+    
+    try {
+        const docRef = doc(db, "users", currentUserId, "subscriptions", id);
+        await updateDoc(docRef, updates);
+        updateDOM();
+    } catch (e) {
+        console.error("Error converting free trial:", e);
+        alert("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ กรุณาลองใหม่");
+    }
+}
+
+if (subTier) {
+    subTier.addEventListener('change', () => {
+        const selectedOpt = subTier.options[subTier.selectedIndex];
+        if (selectedOpt && selectedOpt.dataset.price) {
+            subPrice.value = selectedOpt.dataset.price;
+            subCurrency.value = 'THB';
+            
+            // Auto select yearly for Disney+ or YouTube yearly plans
+            if (selectedOpt.value.includes('รายปี')) {
+                const yearlyRadio = document.querySelector('input[name="sub-cycle"][value="yearly"]');
+                if(yearlyRadio) yearlyRadio.checked = true;
+            } else {
+                const monthlyRadio = document.querySelector('input[name="sub-cycle"][value="monthly"]');
+                if(monthlyRadio) monthlyRadio.checked = true;
+            }
+        }
+    });
+}
+
+if (subIsActive) {
+    subIsActive.addEventListener('change', () => {
+        if (!subIsActive.checked) {
+            resumeDateContainer.classList.remove('hidden');
+        } else {
+            resumeDateContainer.classList.add('hidden');
+            subResumeDate.value = '';
+        }
+    });
+}
+
+if (subIsFreeTrial) {
+    subIsFreeTrial.addEventListener('change', () => {
+        if (subIsFreeTrial.checked) {
+            subDateLabel.innerText = 'วันสิ้นสุดการทดลองใช้';
+        } else {
+            subDateLabel.innerText = 'วันตัดรอบบิลครั้งต่อไป';
+        }
+    });
 }
 
 subForm.addEventListener('submit', async (e) => {
@@ -491,6 +785,7 @@ subForm.addEventListener('submit', async (e) => {
     const newSubData = {
         userId: currentUserId,
         name: finalName,
+        tier: subTier.value.trim(),
         price: price,
         currency: subCurrency.value || 'THB',
         extraPrice: extraPrice,
@@ -498,6 +793,9 @@ subForm.addEventListener('submit', async (e) => {
         date: date,
         isVariable: isVariable,
         isActive: subIsActive.checked,
+        isFreeTrial: subIsFreeTrial.checked,
+        resumeDate: subIsActive.checked ? null : (subResumeDate.value || null),
+        note: subNote.value.trim(),
         category: category,
         updatedAt: new Date().toISOString()
     };
@@ -510,7 +808,7 @@ subForm.addEventListener('submit', async (e) => {
     try {
         if (editTargetId) {
             // Update
-            const docRef = doc(db, "subscriptions", editTargetId);
+            const docRef = doc(db, "users", currentUserId, "subscriptions", editTargetId);
             await updateDoc(docRef, newSubData);
 
             // Update local state
@@ -521,7 +819,7 @@ subForm.addEventListener('submit', async (e) => {
         } else {
             // Create
             newSubData.createdAt = new Date().toISOString();
-            const docRef = await addDoc(collection(db, "subscriptions"), newSubData);
+            const docRef = await addDoc(collection(db, "users", currentUserId, "subscriptions"), newSubData);
 
             // Add to local state
             subscriptions.push({ id: docRef.id, ...newSubData });
@@ -588,7 +886,7 @@ confirmDeleteBtn.addEventListener('click', async () => {
     confirmDeleteBtn.disabled = true;
 
     try {
-        await deleteDoc(doc(db, "subscriptions", deleteTargetId));
+        await deleteDoc(doc(db, "users", currentUserId, "subscriptions", deleteTargetId));
 
         // Find DOM element to animate out
         const itemToAnimate = document.getElementById(`sub-item-${deleteTargetId}`);
@@ -668,7 +966,7 @@ confirmPaidBtn.addEventListener('click', async () => {
         confirmBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span> กำลังบันทึก...</span>`;
         confirmBtn.disabled = true;
 
-        await updateDoc(doc(db, 'subscriptions', subIdToMarkPaid), {
+        await updateDoc(doc(db, 'users', currentUserId, 'subscriptions', subIdToMarkPaid), {
             history: history,
             date: newDateStr,
             updatedAt: new Date().toISOString()
@@ -732,9 +1030,18 @@ function updateDOM() {
     let totalMonthly = 0;
 
     // Filter & Sort
-    // Sort
     let filteredSubs = [...subscriptions];
-    const sortBy = sortSub.value;
+    
+    // Search Filter
+    const searchTerm = searchSub ? searchSub.value.toLowerCase().trim() : '';
+    if (searchTerm) {
+        filteredSubs = filteredSubs.filter(sub => 
+            sub.name.toLowerCase().includes(searchTerm) || 
+            (sub.note && sub.note.toLowerCase().includes(searchTerm))
+        );
+    }
+    
+    const sortBy = sortSub ? sortSub.value : 'upcoming';
 
     if (sortBy === 'upcoming') {
         filteredSubs.sort((a, b) => {
@@ -763,6 +1070,7 @@ function updateDOM() {
         emptyState.classList.add('flex');
         chartSection.classList.add('hidden');
         totalCostEl.innerText = "0.00 บาท";
+        renderBudgetUI();
         return;
     } else {
         emptyState.classList.add('hidden');
@@ -787,7 +1095,7 @@ function updateDOM() {
         const isVariable = sub.isVariable || false;
         const isActive = sub.isActive !== false; // default true
         const isUSD = sub.currency === 'USD';
-        const exchangeRate = 35;
+        const exchangeRate = exchangeRateTHB; // Use dynamic rate
         
         // Calculate THB equivalents
         const priceInThb = isUSD ? (sub.price * exchangeRate) : sub.price;
@@ -803,8 +1111,8 @@ function updateDOM() {
 
         const totalMonthlyForSub = monthlyBase + monthlyExtra;
         
-        // Add to total only if active
-        if (isActive) {
+        // Add to total only if active and not free trial
+        if (isActive && !sub.isFreeTrial) {
             if (!isYearlyView) {
                 totalMonthly += totalMonthlyForSub;
             } else {
@@ -816,14 +1124,14 @@ function updateDOM() {
                 maxPrice = totalMonthlyForSub;
                 topSpenderName = sub.name;
             }
-        } else {
+        } else if (!isActive) {
             // Insight: Money Saved from Paused subscriptions (Monthly basis)
             savedMoney += totalMonthlyForSub;
         }
 
         // --- Prepare for Chart ---
         let priceForChart = 0;
-        if (isActive) {
+        if (isActive && !sub.isFreeTrial) {
             if (!isYearlyView) {
                 priceForChart = totalMonthlyForSub;
             } else {
@@ -850,10 +1158,14 @@ function updateDOM() {
         if (isActive === false) {
             displayBadges += `<span class="bg-slate-100 text-slate-500 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-lg text-[10px] font-bold">หยุดพัก</span>`;
         }
+        if (sub.isFreeTrial) {
+            displayBadges += `<span class="bg-indigo-100 text-indigo-700 border border-indigo-200 dark:border-indigo-500/50 dark:bg-indigo-900/40 dark:text-indigo-300 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-sm">🆓 Free Trial</span>`;
+        }
         if (isVariable) {
             displayBadges += `<span class="bg-rose-50 text-rose-600 border border-rose-100 dark:border-rose-900/50 dark:bg-rose-900/20 dark:text-rose-400 px-2 py-0.5 rounded-lg text-[10px] font-bold">ไม่รวมรายปี</span>`;
         }
         
+
         let originalPriceText = Number(sub.price).toLocaleString();
         if (isUSD) originalPriceText = '$' + Number(sub.price).toLocaleString('en-US', {minimumFractionDigits: 2});
         
@@ -866,7 +1178,10 @@ function updateDOM() {
 
         // Price on the right
         let displayPriceText = '';
-        if (!isYearlyView) {
+        if (sub.isFreeTrial) {
+            displayPriceText = `<span class="font-bold text-indigo-500 dark:text-indigo-400">0.00 บ. (ฟรี)</span>`;
+            priceHtml += ` <span class="text-indigo-500/70 dark:text-indigo-400/70 text-[10px]">(ราคาหลังหมดทดลองใช้)</span>`;
+        } else if (!isYearlyView) {
             displayPriceText = `<span class="font-bold text-slate-800 dark:text-slate-100">${totalMonthlyForSub.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บ.</span>`;
         } else {
             let yrPrice = totalMonthlyForSub * 12;
@@ -885,7 +1200,12 @@ function updateDOM() {
         let bgStyle = 'bg-slate-50 dark:bg-slate-900/50';
         
         if (isActive && dueDateInfo.diffDays !== undefined) {
-            if (dueDateInfo.diffDays <= 3) {
+            if (sub.isFreeTrial && dueDateInfo.diffDays <= 3) {
+                borderColor = 'border-l-rose-500';
+                bgStyle = 'bg-rose-50/80 dark:bg-rose-900/30 shadow-rose-200 dark:shadow-none shadow-md animate-pulse border-rose-200 dark:border-rose-800';
+                dueDateInfo.text = `⚠️ รีบยกเลิกด่วน! (เหลืออีก ${dueDateInfo.diffDays} วัน)`;
+                dueDateInfo.colorClass = 'text-rose-600 dark:text-rose-400';
+            } else if (dueDateInfo.diffDays <= 3) {
                 borderColor = 'border-l-rose-500';
                 bgStyle = 'bg-rose-50/60 dark:bg-rose-900/20 shadow-rose-100 dark:shadow-none shadow-sm';
             } else if (dueDateInfo.diffDays <= 7) {
@@ -915,7 +1235,7 @@ function updateDOM() {
             }
                 </div>
                 <div class="min-w-0 flex-1 py-1">
-                    <h3 class="font-bold text-slate-800 dark:text-slate-100 truncate text-base">${sub.name}</h3>
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 truncate text-base">${sub.name} ${sub.tier ? `<span class="ml-1 text-[10px] font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-full uppercase border border-indigo-100 dark:border-indigo-800/50">${sub.tier}</span>` : ''}</h3>
                     <div class="flex flex-col gap-1.5 mt-1.5">
                         <div class="flex items-center flex-wrap gap-1.5 text-xs">
                             <span class="bg-indigo-50 text-indigo-600 border border-indigo-100 dark:border-slate-700 dark:bg-slate-700/50 dark:text-indigo-300 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-sm">${getCategoryName(sub.category)}</span>
@@ -927,12 +1247,20 @@ function updateDOM() {
                         <div class="text-slate-500 dark:text-slate-400 text-xs font-medium">
                             ${priceHtml}
                         </div>
+                        ${sub.note ? `<div class="text-slate-400 dark:text-slate-500 text-[10px] italic truncate">โน้ต: ${sub.note}</div>` : ''}
                     </div>
+                    ${sub.isFreeTrial && isActive && dueDateInfo.diffDays !== undefined && dueDateInfo.diffDays <= 3 ? `
+                        <div class="mt-3 flex gap-2 w-full max-w-xs animate-fadeIn">
+                            <button onclick="convertFreeTrial('${sub.id}', true)" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold py-1.5 px-2 rounded-lg transition-colors shadow-sm"><i class="fa-solid fa-credit-card mr-1"></i>ใช้ต่อ (จ่ายเงิน)</button>
+                            <button onclick="convertFreeTrial('${sub.id}', false)" class="flex-1 bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-900/40 dark:hover:bg-rose-900/60 dark:text-rose-300 text-[10px] font-bold py-1.5 px-2 rounded-lg transition-colors border border-rose-200 dark:border-rose-800/50"><i class="fa-solid fa-ban mr-1"></i>ยกเลิกแล้ว</button>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
             <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:space-x-1 shrink-0 ml-4">
                 <div class="mb-1 sm:mb-0 sm:mr-3">${displayPriceText}</div>
                 <div class="flex items-center space-x-1">
+                    <button onclick="openSplitModal('${sub.id}')" title="หารค่าบิล" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-xl transition-colors"><i class="fa-solid fa-qrcode"></i></button>
                     <button onclick="markAsPaid('${sub.id}')" title="ชำระเงินแล้ว" class="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-2 rounded-xl transition-colors"><i class="fa-solid fa-check"></i></button>
                     <button onclick="viewHistory('${sub.id}')" title="ประวัติการชำระเงิน" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 p-2 rounded-xl transition-colors"><i class="fa-solid fa-clock-rotate-left"></i></button>
                     <button onclick="editSub('${sub.id}')" class="text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 p-2 rounded-xl transition-colors"><i class="fa-solid fa-pen"></i></button>
@@ -966,6 +1294,7 @@ function updateDOM() {
     chartData = chartData.map(val => Number(val).toFixed(2));
     totalCostEl.innerText = `${totalMonthly.toLocaleString(undefined, { minimumFractionDigits: 2 })} บาท`;
     drawChart(chartLabels, chartData);
+    renderBudgetUI();
 }
 
 function isLeapYear(year) {
@@ -1115,11 +1444,33 @@ function drawChart(labels, data) {
 }
 
 function generateRandomColors(count) {
+    const isDark = document.documentElement.classList.contains('dark');
+    // Cool Premium Palette (Avoids Red/Yellow/Orange to prevent "Rainbow" look, uses distinct cool tones)
+    const baseColors = isDark ? [
+        'rgba(129, 140, 248, 0.85)', // Indigo 400
+        'rgba(45, 212, 191, 0.85)',  // Teal 400
+        'rgba(167, 139, 250, 0.85)', // Violet 400
+        'rgba(56, 189, 248, 0.85)',  // Sky 400
+        'rgba(52, 211, 153, 0.85)',  // Emerald 400
+        'rgba(192, 132, 252, 0.85)', // Purple 400
+        'rgba(34, 211, 238, 0.85)',  // Cyan 400
+        'rgba(148, 163, 184, 0.85)', // Slate 400
+        'rgba(96, 165, 250, 0.85)'   // Blue 400
+    ] : [
+        'rgba(79, 70, 229, 0.85)',   // Indigo 600
+        'rgba(13, 148, 136, 0.85)',  // Teal 600
+        'rgba(124, 58, 237, 0.85)',  // Violet 600
+        'rgba(2, 132, 199, 0.85)',   // Sky 600
+        'rgba(5, 150, 105, 0.85)',   // Emerald 600
+        'rgba(147, 51, 234, 0.85)',  // Purple 600
+        'rgba(8, 145, 178, 0.85)',   // Cyan 600
+        'rgba(71, 85, 105, 0.85)',   // Slate 600
+        'rgba(37, 99, 235, 0.85)'    // Blue 600
+    ];
+    
     let colors = [];
-    const hueStep = 360 / count;
     for (let i = 0; i < count; i++) {
-        const hue = Math.floor(i * hueStep + (Math.random() * 20));
-        colors.push(`hsl(${hue}, 70%, 60%)`);
+        colors.push(baseColors[i % baseColors.length]);
     }
     return colors;
 }
@@ -1128,18 +1479,72 @@ function generateRandomColors(count) {
 // 8. Edit / View / Form Controls
 // ==========================================
 
-window.exportToCSV = function() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Name,Price,Currency,Cycle,Category,ExtraPrice,IsVariable,IsActive,Date\r\n";
-    subscriptions.forEach(s => {
-        csvContent += `${s.name},${s.price},${s.currency},${s.cycle},${s.category},${s.extraPrice || 0},${s.isVariable},${s.isActive},${s.date}\r\n`;
+
+function exportToICS() {
+    let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//SubTracker//TH\r\n";
+    
+    subscriptions.forEach(sub => {
+        if (!sub.date || sub.isActive === false) return;
+        
+        // Generate an event for the next upcoming date
+        const targetDate = new Date(sub.date);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        // If the date has passed this month, we shift it by month/year depending on cycle
+        let eventDate = new Date(targetDate);
+        while (eventDate < today) {
+            if (sub.cycle === 'yearly') {
+                eventDate.setFullYear(eventDate.getFullYear() + 1);
+            } else {
+                eventDate.setMonth(eventDate.getMonth() + 1);
+            }
+        }
+        
+        // Format date to YYYYMMDD
+        const yyyy = eventDate.getFullYear();
+        const mm = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(eventDate.getDate()).padStart(2, '0');
+        const dateString = `${yyyy}${mm}${dd}`;
+        
+        // Description
+        const price = sub.currency === 'USD' ? `$${sub.price}` : `${sub.price} บาท`;
+        const note = sub.note ? `\\nโน้ต: ${sub.note}` : '';
+        
+        icsContent += "BEGIN:VEVENT\r\n";
+        icsContent += `DTSTART;VALUE=DATE:${dateString}\r\n`;
+        // For all day events, DTEND should be the day after
+        const endEventDate = new Date(eventDate);
+        endEventDate.setDate(endEventDate.getDate() + 1);
+        const endYyyy = endEventDate.getFullYear();
+        const endMm = String(endEventDate.getMonth() + 1).padStart(2, '0');
+        const endDd = String(endEventDate.getDate()).padStart(2, '0');
+        
+        icsContent += `DTEND;VALUE=DATE:${endYyyy}${endMm}${endDd}\r\n`;
+        icsContent += `SUMMARY:จ่ายค่า ${sub.name}\r\n`;
+        icsContent += `DESCRIPTION:ถึงเวลาชำระค่าบริการ ${sub.name} จำนวน ${price}${note}\r\n`;
+        icsContent += `UID:subtracker-${sub.id}-${dateString}@subtracker.app\r\n`;
+        
+        // Add recurrence rule
+        if (sub.cycle === 'yearly') {
+            icsContent += "RRULE:FREQ=YEARLY\r\n";
+        } else {
+            icsContent += "RRULE:FREQ=MONTHLY\r\n";
+        }
+        
+        icsContent += "END:VEVENT\r\n";
     });
-    const encodedUri = encodeURI(csvContent);
+    
+    icsContent += "END:VCALENDAR\r\n";
+    
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "my_subscriptions.csv");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "subtracker_calendar.ics");
     document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 };
 
 window.editSub = function (id) {
@@ -1160,17 +1565,48 @@ window.editSub = function (id) {
 
     window.toggleCustomInput();
 
-    subPrice.value = sub.price;
-    subCurrency.value = sub.currency || 'THB';
+    if (sub.tier && tierContainer && serviceTiers[sub.name]) {
+        tierContainer.classList.remove('hidden');
+        subTier.innerHTML = '<option value="" disabled>เลือกแพ็กเกจ...</option>';
+        serviceTiers[sub.name].forEach(tier => {
+            const opt = document.createElement('option');
+            opt.value = tier.name;
+            opt.text = `${tier.name} (${tier.price} บ.)`;
+            opt.dataset.price = tier.price;
+            if (tier.name === sub.tier) opt.selected = true;
+            subTier.appendChild(opt);
+        });
+    } else {
+        if(tierContainer) tierContainer.classList.add('hidden');
+        subTier.value = '';
+    }
+
     subExtraPrice.value = sub.extraPrice || '';
     subCategory.value = sub.category || 'others';
     subIsActive.checked = sub.isActive !== false;
+    subNote.value = sub.note || '';
     
     const cycleRadio = document.querySelector(`input[name="sub-cycle"][value="${sub.cycle}"]`);
     if (cycleRadio) cycleRadio.checked = true;
 
     if (sub.date) subDate.value = sub.date;
+    
+    subIsFreeTrial.checked = sub.isFreeTrial === true;
+    if (subIsFreeTrial.checked) {
+        subDateLabel.innerText = 'วันสิ้นสุดการทดลองใช้';
+    } else {
+        subDateLabel.innerText = 'วันตัดรอบบิลครั้งต่อไป';
+    }
+    
     subIsActive.checked = sub.isActive !== false; // default true
+    if (!subIsActive.checked) {
+        resumeDateContainer.classList.remove('hidden');
+        subResumeDate.value = sub.resumeDate || '';
+    } else {
+        resumeDateContainer.classList.add('hidden');
+        subResumeDate.value = '';
+    }
+    
     toggleExtraPrice();
 
     // Change Button State
@@ -1190,6 +1626,16 @@ function resetFormState() {
     submitBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
     submitBtn.querySelector('i').className = "fa-solid fa-plus";
     subExtraPrice.value = '';
+    if (subTier) subTier.value = '';
+    if (tierContainer) tierContainer.classList.add('hidden');
+    
+    subIsFreeTrial.checked = false;
+    subDateLabel.innerText = 'วันตัดรอบบิลครั้งต่อไป';
+    
+    subIsActive.checked = true;
+    resumeDateContainer.classList.add('hidden');
+    subResumeDate.value = '';
+    
     toggleExtraPrice();
 }
 
@@ -1201,11 +1647,28 @@ window.toggleCustomInput = function () {
     
     if (val === 'other') {
         customNameContainer.classList.remove('hidden');
+        if (tierContainer) tierContainer.classList.add('hidden');
+        if (subTier) subTier.innerHTML = '<option value="" disabled selected>เลือกแพ็กเกจ...</option>';
         subName.required = true;
     } else {
         customNameContainer.classList.add('hidden');
         subName.required = false;
         subName.value = '';
+        
+        if (tierContainer && serviceTiers[val]) {
+            tierContainer.classList.remove('hidden');
+            subTier.innerHTML = '<option value="" disabled selected>เลือกแพ็กเกจ...</option>';
+            serviceTiers[val].forEach(tier => {
+                const opt = document.createElement('option');
+                opt.value = tier.name;
+                opt.text = `${tier.name} (${tier.price} บ.)`;
+                opt.dataset.price = tier.price;
+                subTier.appendChild(opt);
+            });
+        } else if (tierContainer) {
+            tierContainer.classList.add('hidden');
+            if (subTier) subTier.innerHTML = '<option value="" disabled selected>เลือกแพ็กเกจ...</option>';
+        }
     }
     
     if (val === 'Netflix' || val === 'Spotify' || val === 'YouTube' || val === 'Disney+') {
@@ -1295,8 +1758,10 @@ chartViewCategoryBtn.addEventListener('click', () => {
 
 const viewListBtn = document.getElementById('view-list-btn');
 const viewCalendarBtn = document.getElementById('view-calendar-btn');
+const viewDashboardBtn = document.getElementById('view-dashboard-btn');
 const viewListBtnMobile = document.getElementById('view-list-btn-mobile');
 const viewCalendarBtnMobile = document.getElementById('view-calendar-btn-mobile');
+const viewDashboardBtnMobile = document.getElementById('view-dashboard-btn-mobile');
 const calMonthYear = document.getElementById('cal-month-year');
 const calGrid = document.getElementById('cal-grid');
 const calMonthList = document.getElementById('cal-month-list');
@@ -1305,29 +1770,54 @@ const calNext = document.getElementById('cal-next');
 
 const activeViewBtnClass = "px-3 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-300 transition-all";
 const inactiveViewBtnClass = "px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all";
-const activeViewBtnMobileClass = "w-1/2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-300 transition-all";
-const inactiveViewBtnMobileClass = "w-1/2 px-3 py-2 text-xs font-medium rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all";
+const activeViewBtnMobileClass = "flex-1 px-2 py-2 text-[10px] sm:text-xs font-medium rounded-lg bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-300 transition-all";
+const inactiveViewBtnMobileClass = "flex-1 px-2 py-2 text-[10px] sm:text-xs font-medium rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all";
 
 function updateViewButtons() {
+    const subDashboard = document.getElementById('sub-dashboard');
+    
     if (viewMode === 'list') {
         if(viewListBtn) viewListBtn.className = activeViewBtnClass;
         if(viewCalendarBtn) viewCalendarBtn.className = inactiveViewBtnClass;
+        if(viewDashboardBtn) viewDashboardBtn.className = inactiveViewBtnClass;
+        
         if(viewListBtnMobile) viewListBtnMobile.className = activeViewBtnMobileClass;
         if(viewCalendarBtnMobile) viewCalendarBtnMobile.className = inactiveViewBtnMobileClass;
+        if(viewDashboardBtnMobile) viewDashboardBtnMobile.className = inactiveViewBtnMobileClass;
         
         subList.classList.remove('hidden');
         if(listControlsContainer) listControlsContainer.classList.remove('hidden');
         subCalendar.classList.add('hidden');
-    } else {
+        if(subDashboard) subDashboard.classList.add('hidden');
+    } else if (viewMode === 'calendar') {
         if(viewListBtn) viewListBtn.className = inactiveViewBtnClass;
         if(viewCalendarBtn) viewCalendarBtn.className = activeViewBtnClass;
+        if(viewDashboardBtn) viewDashboardBtn.className = inactiveViewBtnClass;
+        
         if(viewListBtnMobile) viewListBtnMobile.className = inactiveViewBtnMobileClass;
         if(viewCalendarBtnMobile) viewCalendarBtnMobile.className = activeViewBtnMobileClass;
+        if(viewDashboardBtnMobile) viewDashboardBtnMobile.className = inactiveViewBtnMobileClass;
         
         subList.classList.add('hidden');
         if(listControlsContainer) listControlsContainer.classList.add('hidden');
         subCalendar.classList.remove('hidden');
+        if(subDashboard) subDashboard.classList.add('hidden');
         renderCalendar();
+    } else if (viewMode === 'dashboard') {
+        if(viewListBtn) viewListBtn.className = inactiveViewBtnClass;
+        if(viewCalendarBtn) viewCalendarBtn.className = inactiveViewBtnClass;
+        if(viewDashboardBtn) viewDashboardBtn.className = activeViewBtnClass;
+        
+        if(viewListBtnMobile) viewListBtnMobile.className = inactiveViewBtnMobileClass;
+        if(viewCalendarBtnMobile) viewCalendarBtnMobile.className = inactiveViewBtnMobileClass;
+        if(viewDashboardBtnMobile) viewDashboardBtnMobile.className = activeViewBtnMobileClass;
+        
+        subList.classList.add('hidden');
+        if(listControlsContainer) listControlsContainer.classList.add('hidden');
+        subCalendar.classList.add('hidden');
+        if(subDashboard) subDashboard.classList.remove('hidden');
+        renderBudgetUI();
+        renderDashboard();
     }
 }
 
@@ -1458,8 +1948,14 @@ function renderCalendar() {
             allMonthSubs.forEach(item => {
                 const sub = item.sub;
                 const isUSD = sub.currency === 'USD';
-                let displayPrice = isUSD ? `$${sub.price}` : `${sub.price} บ.`;
+                let displayPrice = '';
+                if (isUSD) {
+                    displayPrice = `$${sub.price} <span class="text-[10px] text-slate-400">(${(sub.price * exchangeRateTHB).toFixed(0)} บ.)</span>`;
+                } else {
+                    displayPrice = `${sub.price} บ.`;
+                }
                 const logoUrl = getServiceLogo(sub.name);
+                const tierBadge = sub.tier ? `<span class="ml-2 text-[9px] font-semibold tracking-wider text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400 px-1.5 py-0.5 rounded-full uppercase border border-indigo-100 dark:border-indigo-800/50">${sub.tier}</span>` : '';
                 
                 // Calculate urgency for the list item
                 const subDateForThisMonth = new Date(year, month, item.day);
@@ -1522,8 +2018,16 @@ function renderCalendar() {
 // Event Listeners for toggle
 if(viewListBtn) viewListBtn.addEventListener('click', () => { viewMode = 'list'; updateViewButtons(); });
 if(viewCalendarBtn) viewCalendarBtn.addEventListener('click', () => { viewMode = 'calendar'; updateViewButtons(); });
+if(viewDashboardBtn) viewDashboardBtn.addEventListener('click', () => { viewMode = 'dashboard'; updateViewButtons(); });
+
 if(viewListBtnMobile) viewListBtnMobile.addEventListener('click', () => { viewMode = 'list'; updateViewButtons(); });
 if(viewCalendarBtnMobile) viewCalendarBtnMobile.addEventListener('click', () => { viewMode = 'calendar'; updateViewButtons(); });
+if(viewDashboardBtnMobile) viewDashboardBtnMobile.addEventListener('click', () => { viewMode = 'dashboard'; updateViewButtons(); });
+
+if(searchSub) searchSub.addEventListener('input', () => {
+    updateDOM();
+    if(viewMode === 'calendar') renderCalendar();
+});
 
 if(calPrev) calPrev.addEventListener('click', () => {
     currentCalDate.setMonth(currentCalDate.getMonth() - 1);
@@ -1562,3 +2066,327 @@ if (document.documentElement.classList.contains('dark')) {
     themeIcon.className = "fa-solid fa-moon text-indigo-100";
 }
 
+async function fetchExchangeRate() {
+    try {
+        const response = await fetch('https://open.er-api.com/v6/latest/USD');
+        const data = await response.json();
+        if (data && data.rates && data.rates.THB) {
+            exchangeRateTHB = data.rates.THB;
+            isExchangeRateLoaded = true;
+            const displayEl = document.getElementById('exchange-rate-display');
+            if(displayEl) displayEl.innerText = `อัปเดตเรท: 1 USD = ${exchangeRateTHB.toFixed(2)} THB`;
+            updateDOM();
+        }
+    } catch (e) {
+        console.error("Failed to fetch exchange rate", e);
+        const displayEl = document.getElementById('exchange-rate-display');
+        if(displayEl) displayEl.innerText = `เรทประเมิน: 1 USD = 35.00 THB (ออฟไลน์)`;
+    }
+}
+
+fetchExchangeRate();
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(registration => {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+    });
+}
+
+
+
+let annualChartInstance = null;
+
+function renderDashboard() {
+    const monthlyCosts = new Array(12).fill(0);
+    let totalYear = 0;
+    let savedMoney = 0;
+    const spenders = {};
+    let activeEntertainmentCount = 0;
+
+    subscriptions.forEach(sub => {
+        if (!sub || !sub.price) return;
+        const isUSD = sub.currency === 'USD';
+        const priceInThb = isUSD ? (sub.price * exchangeRateTHB) : sub.price;
+        
+        if (sub.isActive === false) {
+            const monthlySaved = sub.cycle === 'yearly' ? priceInThb / 12 : priceInThb;
+            savedMoney += (monthlySaved * 12);
+            return;
+        }
+        
+        // Count active entertainment subs for overlap warning
+        if (sub.category === 'entertainment') {
+            activeEntertainmentCount++;
+        }
+        
+        if (sub.cycle === 'yearly') {
+            const monthlyShare = priceInThb / 12;
+            for(let i=0; i<12; i++) monthlyCosts[i] += monthlyShare;
+            totalYear += priceInThb;
+            spenders[sub.name] = (spenders[sub.name] || 0) + priceInThb;
+        } else {
+            for(let i=0; i<12; i++) monthlyCosts[i] += priceInThb;
+            totalYear += (priceInThb * 12);
+            spenders[sub.name] = (spenders[sub.name] || 0) + (priceInThb * 12);
+        }
+    });
+
+    const elTotalYear = document.getElementById('dash-total-year');
+    const elTotalSaved = document.getElementById('dash-total-saved');
+    const elTopSpender = document.getElementById('dash-top-spender');
+    
+    if(elTotalYear) elTotalYear.innerText = `${Math.round(totalYear).toLocaleString()} บ.`;
+    if(elTotalSaved) elTotalSaved.innerText = `${Math.round(savedMoney).toLocaleString()} บ.`;
+    
+    let topSpender = '-';
+    let maxSpend = 0;
+    for(const name in spenders) {
+        if(spenders[name] > maxSpend) {
+            maxSpend = spenders[name];
+            topSpender = name;
+        }
+    }
+    if(elTopSpender) elTopSpender.innerText = topSpender !== '-' ? `${topSpender} (${Math.round(maxSpend).toLocaleString()} บ.)` : '-';
+
+    const overlapWarning = document.getElementById('overlap-warning');
+    if (overlapWarning) {
+        if (activeEntertainmentCount >= 3) { // more than 2
+            overlapWarning.classList.remove('hidden');
+        } else {
+            overlapWarning.classList.add('hidden');
+        }
+    }
+
+    const canvas = document.getElementById('annualChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const isDark = document.documentElement.classList.contains('dark');
+    
+    if (annualChartInstance) {
+        annualChartInstance.destroy();
+    }
+    
+    const barColors = generateRandomColors(12);
+    
+    annualChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'],
+            datasets: [{
+                label: 'ยอดจ่ายคาดการณ์ (บาท)',
+                data: monthlyCosts.map(v => Math.round(v)),
+                backgroundColor: barColors,
+                hoverBackgroundColor: barColors.map(c => c.replace('0.85)', '1)')),
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' },
+                    ticks: { color: isDark ? '#94a3b8' : '#64748b' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: isDark ? '#94a3b8' : '#64748b' }
+                }
+            }
+        }
+    });
+}
+
+// ==========================================
+// 8. PromptPay Split Bill
+// ==========================================
+const splitModal = document.getElementById('split-modal');
+const closeSplitBtn = document.getElementById('close-split-btn');
+const splitTotalPrice = document.getElementById('split-total-price');
+const splitPromptpay = document.getElementById('split-promptpay');
+const splitCount = document.getElementById('split-count');
+const splitMinus = document.getElementById('split-minus');
+const splitPlus = document.getElementById('split-plus');
+const splitPerPerson = document.getElementById('split-per-person');
+const splitQr = document.getElementById('split-qr');
+let currentSplitBasePrice = 0;
+let qrCodeInstance = null;
+
+function crc16(data) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < data.length; i++) {
+        crc ^= data.charCodeAt(i) << 8;
+        for (let j = 0; j < 8; j++) {
+            if ((crc & 0x8000) > 0) crc = (crc << 1) ^ 0x1021;
+            else crc = crc << 1;
+        }
+    }
+    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+}
+
+function generatePromptPayPayload(promptpayId, amount) {
+    let target = promptpayId.replace(/[^0-9]/g, '');
+    let idType = '0113'; 
+    if (target.length >= 13) {
+        idType = '0213';
+    } else {
+        if (target.startsWith('0')) target = '66' + target.slice(1);
+        target = target.padStart(13, '0');
+    }
+    let accInfo = `0016A000000677010111${idType}${target}`;
+    let accInfoLen = accInfo.length.toString().padStart(2, '0');
+    let amountStr = amount.toFixed(2);
+    let amountLen = amountStr.length.toString().padStart(2, '0');
+    let payload = `00020101021129${accInfoLen}${accInfo}5802TH530376454${amountLen}${amountStr}6304`;
+    return payload + crc16(payload);
+}
+
+function updateSplitCalc() {
+    let count = parseInt(splitCount.value) || 2;
+    if (count < 2) count = 2;
+    
+    let pp = splitPromptpay.value.trim();
+    localStorage.setItem('subtracker_promptpay', pp);
+    
+    let perPerson = currentSplitBasePrice / count;
+    splitPerPerson.innerText = `${perPerson.toLocaleString(undefined, { minimumFractionDigits: 2 })} บ.`;
+    
+    splitQr.innerHTML = '';
+    if (pp && pp.length >= 10 && typeof QRCode !== 'undefined') {
+        let payload = generatePromptPayPayload(pp, perPerson);
+        qrCodeInstance = new QRCode(splitQr, {
+            text: payload,
+            width: 150,
+            height: 150,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.L
+        });
+    } else if (!pp) {
+        splitQr.innerHTML = '<div class="text-slate-400 text-[10px] w-[150px] h-[150px] flex items-center justify-center text-center border-2 border-dashed border-slate-200 rounded-xl">กรอกเบอร์พร้อมเพย์<br>เพื่อสร้าง QR Code</div>';
+    }
+}
+
+window.logUsage = async function (subId) {
+    if (!currentUserId) return;
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+    
+    // Add simple click animation on the button
+    const btnIcon = event.currentTarget.querySelector('i');
+    if (btnIcon) {
+        btnIcon.classList.remove('fa-hand-pointer');
+        btnIcon.classList.add('fa-check', 'text-emerald-500');
+        setTimeout(() => {
+            btnIcon.classList.add('fa-hand-pointer');
+            btnIcon.classList.remove('fa-check', 'text-emerald-500');
+        }, 1000);
+    }
+    
+    const currentMonthStr = new Date().toISOString().substring(0, 7);
+    let newUsageCount = sub.usageCount || 0;
+    
+    if (sub.usageMonth !== currentMonthStr) {
+        newUsageCount = 1;
+    } else {
+        newUsageCount += 1;
+    }
+    
+    try {
+        await updateDoc(doc(db, "users", currentUserId, "subscriptions", subId), {
+            usageCount: newUsageCount,
+            usageMonth: currentMonthStr,
+            updatedAt: new Date().toISOString()
+        });
+        
+        // Optimistic update
+        sub.usageCount = newUsageCount;
+        sub.usageMonth = currentMonthStr;
+        updateDOM();
+    } catch (e) {
+        console.error("Error logging usage:", e);
+    }
+};
+
+window.openSplitModal = function(subId) {
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+    
+    const isUSD = sub.currency === 'USD';
+    currentSplitBasePrice = isUSD ? (sub.price * exchangeRateTHB) : sub.price;
+    splitTotalPrice.innerText = `${currentSplitBasePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })} บ.`;
+    
+    let savedPP = localStorage.getItem('subtracker_promptpay');
+    if (savedPP) splitPromptpay.value = savedPP;
+    
+    splitCount.value = 2;
+    updateSplitCalc();
+    
+    splitModal.classList.remove('hidden');
+    setTimeout(() => {
+        splitModal.classList.remove('opacity-0');
+        splitModal.querySelector('div').classList.remove('scale-95');
+    }, 10);
+};
+
+window.closeSplitModalFunc = function() {
+    splitModal.classList.add('opacity-0');
+    splitModal.querySelector('div').classList.add('scale-95');
+    setTimeout(() => {
+        splitModal.classList.add('hidden');
+    }, 300);
+};
+
+if(closeSplitBtn) closeSplitBtn.addEventListener('click', closeSplitModalFunc);
+if(splitPromptpay) splitPromptpay.addEventListener('input', updateSplitCalc);
+if(splitCount) splitCount.addEventListener('input', updateSplitCalc);
+if(splitMinus) splitMinus.addEventListener('click', () => {
+    let c = parseInt(splitCount.value) || 2;
+    if(c > 2) { splitCount.value = c - 1; updateSplitCalc(); }
+});
+if(splitPlus) splitPlus.addEventListener('click', () => {
+    let c = parseInt(splitCount.value) || 2;
+    splitCount.value = c + 1; updateSplitCalc();
+});
+
+// ==========================================
+// 9. PWA Install
+// ==========================================
+
+let deferredPrompt;
+const installBtn = document.getElementById('pwa-install-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installBtn) {
+        installBtn.classList.remove('hidden');
+    }
+});
+
+if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            installBtn.classList.add('hidden');
+        }
+    });
+}
+
+window.addEventListener('appinstalled', () => {
+    if (installBtn) installBtn.classList.add('hidden');
+    deferredPrompt = null;
+});
