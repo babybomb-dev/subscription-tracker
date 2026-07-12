@@ -4,10 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SubTracker - ติดตามค่าบริการ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="apple-touch-icon" href="icon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    }
+                }
+            }
         }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -91,10 +104,22 @@
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-xl font-bold tracking-wide">💵 SubTracker</h1>
                     <div class="flex items-center space-x-3">
-                        <button id="theme-toggle" class="w-10 h-10 flex items-center justify-center rounded-full bg-indigo-700/50 dark:bg-indigo-800/50 hover:bg-indigo-500 dark:hover:bg-indigo-700 transition-colors">
-                            <i id="theme-icon" class="fa-solid fa-moon text-indigo-100"></i>
+                        <!-- Profile Button -->
+                        <button id="profile-btn" class="flex items-center space-x-2 bg-indigo-700/50 dark:bg-indigo-800/50 hover:bg-indigo-500 dark:hover:bg-indigo-700 rounded-full pr-3 pl-1 py-1 transition-colors group max-w-[140px]" title="จัดการโปรไฟล์">
+                            <div class="w-8 h-8 shrink-0 rounded-full bg-indigo-400 overflow-hidden flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                <span id="header-avatar-initial">U</span>
+                                <img id="header-avatar-img" src="" class="hidden w-full h-full object-cover">
+                            </div>
+                        <span class="text-sm font-medium text-indigo-100 group-hover:text-white truncate" id="header-display-name">ผู้ใช้</span>
+                    </button>
+                    
+                    <!-- Theme Toggle -->
+                        <button id="theme-toggle" class="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-white/20 dark:bg-black/30 hover:bg-white/30 dark:hover:bg-black/50 border border-white/30 dark:border-slate-700 transition-all duration-300 shadow-sm" title="เปลี่ยนธีม">
+                            <i id="theme-icon" class="fa-solid fa-moon text-white"></i>
                         </button>
-                        <button id="logout-btn" class="w-10 h-10 flex items-center justify-center rounded-full bg-indigo-700/50 dark:bg-indigo-800/50 hover:bg-indigo-500 dark:hover:bg-indigo-700 text-rose-300 hover:text-rose-200 transition-colors" title="ออกจากระบบ">
+                        
+                        <!-- Logout -->
+                        <button id="logout-btn" class="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-white/20 dark:bg-black/30 hover:bg-white/30 dark:hover:bg-black/50 border border-white/30 dark:border-slate-700 text-rose-200 hover:text-rose-100 transition-all duration-300 shadow-sm" title="ออกจากระบบ">
                             <i class="fa-solid fa-right-from-bracket"></i>
                         </button>
                     </div>
@@ -104,7 +129,7 @@
                     <div class="flex justify-between items-center mb-1">
                         <span class="text-xs uppercase tracking-wider text-indigo-200 font-medium" id="total-label">ยอดรวมต่อเดือน</span>
                         
-                        <button id="toggle-view-btn" class="relative inline-flex h-6 w-12 items-center rounded-full bg-indigo-900/30 transition-colors focus:outline-none shadow-inner">
+                        <button id="toggle-view-btn" class="relative inline-flex h-6 w-12 items-center rounded-full bg-indigo-950/60 dark:bg-slate-900 border border-white/10 transition-colors duration-300 focus:outline-none shadow-inner">
                             <span id="toggle-knob" class="inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ease-in-out translate-x-1 shadow-sm"></span>
                         </button>
                     </div>
@@ -121,12 +146,34 @@
                     
                     <!-- Bento Box 1: Chart Section -->
                     <section id="chart-section" class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm transition-colors duration-300">
-                        <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">สรุปค่าใช้จ่าย</h2>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-100">สรุปค่าใช้จ่าย</h2>
+                            <div class="flex items-center space-x-2 bg-slate-100 dark:bg-slate-700 p-1 rounded-xl">
+                                <button id="chart-view-app" class="px-3 py-1 text-xs font-medium rounded-lg bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-300 transition-all">แอป</button>
+                                <button id="chart-view-category" class="px-3 py-1 text-xs font-medium rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all">หมวดหมู่</button>
+                            </div>
+                        </div>
                         <div class="flex flex-col sm:flex-row items-center justify-between gap-6 p-4">
                             <div class="relative w-48 h-48 sm:w-56 sm:h-56 shrink-0 mx-auto sm:mx-0"> 
                                 <canvas id="subChart"></canvas>
                             </div>
                             <div id="chart-legend" class="w-full space-y-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1">
+                            </div>
+                        </div>
+                    </section>
+                    <!-- Spending Insights -->
+                    <section id="insights-section" class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm transition-colors duration-300">
+                        <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">พฤติกรรมการใช้จ่าย</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-2xl border border-rose-100 dark:border-rose-800/30">
+                                <p class="text-[10px] uppercase font-bold text-rose-500 mb-1"><i class="fa-solid fa-trophy mr-1"></i>บริการที่แพงที่สุด</p>
+                                <p id="insight-top-spender" class="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">-</p>
+                                <p id="insight-top-spender-price" class="text-xs text-slate-500 dark:text-slate-400 mt-1">-</p>
+                            </div>
+                            <div class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
+                                <p class="text-[10px] uppercase font-bold text-emerald-500 mb-1"><i class="fa-solid fa-piggy-bank mr-1"></i>ประหยัดไปได้ (เดือนนี้)</p>
+                                <p id="insight-saved-money" class="text-lg font-bold text-slate-800 dark:text-slate-100 truncate">0.00 บ.</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">จากการกดพักการใช้งาน</p>
                             </div>
                         </div>
                     </section>
@@ -136,17 +183,29 @@
                         <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm transition-colors duration-300">
                             <div class="flex justify-between items-center mb-3">
                                 <h2 class="text-lg font-semibold text-slate-800 dark:text-slate-100">รายการของคุณ</h2>
-                                <span class="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded-full transition-colors duration-300" id="sub-count">0 รายการ</span>
+                                <div class="flex items-center space-x-2 sm:space-x-4">
+                                    <div class="hidden sm:flex items-center bg-slate-100 dark:bg-slate-700 p-1 rounded-xl">
+                                        <button id="view-list-btn" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-300 transition-all"><i class="fa-solid fa-list mr-1"></i>รายการ</button>
+                                        <button id="view-calendar-btn" class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"><i class="fa-regular fa-calendar mr-1"></i>ปฏิทิน</button>
+                                    </div>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded-full transition-colors duration-300 shrink-0" id="sub-count">0 รายการ</span>
+                                </div>
                             </div>
-                            <div class="flex flex-col sm:flex-row gap-3 mb-4">
-                                <input type="text" id="search-sub" placeholder="🔍 ค้นหาบริการ..." 
-                                    class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-slate-200 transition-colors duration-300">
-                    
-                                <select id="sort-sub" class="w-full sm:w-48 px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-600 dark:text-slate-300 outline-none transition-colors duration-300">
-                                    <option value="default">เรียงตามวันที่เพิ่ม</option>
-                                    <option value="price-high">ราคา: มากไปน้อย</option>
-                                    <option value="price-low">ราคา: น้อยไปมาก</option>
-                                    <option value="name">ชื่อ: A-Z</option>
+                            <!-- Mobile View Toggle -->
+                            <div class="flex sm:hidden items-center bg-slate-100 dark:bg-slate-700 p-1 rounded-xl w-full mb-3">
+                                <button id="view-list-btn-mobile" class="w-1/2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-300 transition-all"><i class="fa-solid fa-list mr-1"></i>รายการ</button>
+                                <button id="view-calendar-btn-mobile" class="w-1/2 px-3 py-2 text-xs font-medium rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"><i class="fa-regular fa-calendar mr-1"></i>ปฏิทิน</button>
+                            </div>
+
+                            <div id="list-controls-container" class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
+                                <button type="button" id="export-csv-btn" class="w-full sm:w-auto bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/60 dark:text-emerald-400 font-medium py-2 px-4 rounded-xl transition duration-200 shadow-sm text-sm flex items-center justify-center space-x-2 border border-emerald-200 dark:border-emerald-800/50">
+                                    <i class="fa-solid fa-file-csv"></i>
+                                    <span>ส่งออก CSV</span>
+                                </button>
+                                <select id="sort-sub" class="w-full sm:w-72 px-4 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm text-slate-600 dark:text-slate-200 outline-none transition-colors duration-300 shadow-sm focus:ring-2 focus:ring-indigo-500">
+                                    <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="upcoming">⏳ ด่วนสุด (เรียงตามวันครบกำหนด)</option>
+                                    <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="price-high">💵 ราคาแพงสุด (มากไปน้อย)</option>
+                                    <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="name">🔤 ตามตัวอักษร (A-Z, ก-ฮ)</option>
                                 </select>
                             </div>
                             
@@ -158,6 +217,29 @@
                             
                             <!-- List -->
                             <div id="sub-list" class="space-y-3"></div>
+
+                            <!-- Calendar View -->
+                            <div id="sub-calendar" class="hidden">
+                                <div class="flex justify-between items-center mb-4 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                                    <button id="cal-prev" class="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                                    <h3 id="cal-month-year" class="font-bold text-slate-700 dark:text-slate-200 text-sm">เดือน ปี</h3>
+                                    <button id="cal-next" class="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                                </div>
+                                <div class="grid grid-cols-7 gap-1 text-center mb-2">
+                                    <div class="text-[10px] font-bold text-rose-400 dark:text-rose-500 uppercase">อา</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">จ</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">อ</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">พ</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">พฤ</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">ศ</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">ส</div>
+                                </div>
+                                <div id="cal-grid" class="grid grid-cols-7 gap-1 sm:gap-2"></div>
+                                <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                                    <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3"><i class="fa-solid fa-list-ul mr-2 text-indigo-500"></i>บิลที่ต้องจ่ายในเดือนนี้</h4>
+                                    <div id="cal-month-list" class="space-y-2"></div>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -172,64 +254,183 @@
                         <div class="mb-4">
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">เลือกบริการ</label>
                             
-                            <div class="grid grid-cols-5 gap-2 mb-3">
-                                <label class="cursor-pointer text-center group">
-                                    <input type="radio" name="sub-preset" value="Netflix" class="peer sr-only" checked>
-                                    <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
-                                        <img src="https://icon.horse/icon/netflix.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Netflix" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
-                                        <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">N</div>
-                                        <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Netflix</span>
-                                    </div>
-                                </label>
-                                
-                                <label class="cursor-pointer text-center group">
-                                    <input type="radio" name="sub-preset" value="Spotify" class="peer sr-only">
-                                    <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
-                                        <img src="https://icon.horse/icon/spotify.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Spotify" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
-                                        <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">S</div>
-                                        <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Spotify</span>
-                                    </div>
-                                </label>
-
-                                <label class="cursor-pointer text-center group">
-                                    <input type="radio" name="sub-preset" value="YouTube Premium" class="peer sr-only">
-                                    <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
-                                        <img src="https://icon.horse/icon/youtube.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="YouTube" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
-                                        <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">Y</div>
-                                        <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">YouTube</span>
-                                    </div>
-                                </label>
-
-                                <label class="cursor-pointer text-center group">
-                                    <input type="radio" name="sub-preset" value="Disney+" class="peer sr-only">
-                                    <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
-                                        <img src="https://icon.horse/icon/disneyplus.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Disney+" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
-                                        <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">D</div>
-                                        <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Disney+</span>
-                                    </div>
-                                </label>
-
-                                <label class="cursor-pointer text-center group">
-                                    <input type="radio" name="sub-preset" value="other" class="peer sr-only">
-                                    <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
-                                        <div class="w-8 h-8 mx-auto bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-300 mb-1 shadow-sm transition-colors duration-300">
-                                            <i class="fa-solid fa-plus"></i>
+                            <!-- Entertainment -->
+                            <div class="mb-3">
+                                <label class="block text-[10px] uppercase font-semibold tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 px-1">🎬 บันเทิง (Entertainment)</label>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="Netflix" class="peer sr-only" checked>
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://icon.horse/icon/netflix.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Netflix" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">N</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Netflix</span>
                                         </div>
-                                        <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">อื่นๆ</span>
+                                    </label>
+                                    
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="Spotify" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://icon.horse/icon/spotify.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Spotify" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">S</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Spotify</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="YouTube Premium" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://icon.horse/icon/youtube.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="YouTube" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">Y</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">YouTube</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="Disney+" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://icon.horse/icon/disneyplus.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Disney+" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">D</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Disney+</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Utilities -->
+                            <div class="mb-3">
+                                <label class="block text-[10px] uppercase font-semibold tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 px-1">⚡ สาธารณูปโภค (Utilities)</label>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="มือถือ" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <div class="w-8 h-8 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 mb-1 shadow-sm transition-colors duration-300">
+                                                <i class="fa-solid fa-mobile-screen"></i>
+                                            </div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">มือถือ</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="เน็ตบ้าน" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <div class="w-8 h-8 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 mb-1 shadow-sm transition-colors duration-300">
+                                                <i class="fa-solid fa-wifi"></i>
+                                            </div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">เน็ตบ้าน</span>
+                                        </div>
+                                    </label>
+                                    
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="ค่าน้ำ" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <div class="w-8 h-8 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 mb-1 shadow-sm transition-colors duration-300">
+                                                <i class="fa-solid fa-droplet"></i>
+                                            </div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">ค่าน้ำ</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="ค่าไฟ" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <div class="w-8 h-8 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-amber-500 dark:text-amber-400 mb-1 shadow-sm transition-colors duration-300">
+                                                <i class="fa-solid fa-bolt"></i>
+                                            </div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">ค่าไฟ</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Work -->
+                            <div class="mb-3">
+                                <label class="block text-[10px] uppercase font-semibold tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 px-1">💼 การทำงาน (Work)</label>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="Google Workspace" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://icon.horse/icon/google.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Google" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">G</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Google</span>
+                                        </div>
+                                    </label>
+                                    
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="Microsoft 365" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://icon.horse/icon/microsoft.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Microsoft" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">M</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Microsoft</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="Canva" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://icon.horse/icon/canva.com" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="Canva" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">C</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">Canva</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="cursor-pointer text-center group">
+                                        <input type="radio" name="sub-preset" value="ChatGPT" class="peer sr-only">
+                                        <div class="p-2 rounded-xl border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700">
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" class="w-8 h-8 mx-auto rounded-full mb-1 object-cover shadow-sm bg-white" alt="ChatGPT" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">
+                                            <div class="hidden w-8 h-8 mx-auto bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-sm mb-1 shadow-sm">C</div>
+                                            <span class="text-[10px] text-slate-600 dark:text-slate-400 font-medium block truncate mt-1">ChatGPT</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Custom -->
+                            <div class="mb-2">
+                                <label class="cursor-pointer text-center group block">
+                                    <input type="radio" name="sub-preset" value="other" class="peer sr-only">
+                                    <div class="p-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 transition-all hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center space-x-2">
+                                        <div class="w-6 h-6 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-300 shadow-sm transition-colors duration-300">
+                                            <i class="fa-solid fa-plus text-xs"></i>
+                                        </div>
+                                        <span class="text-xs text-slate-600 dark:text-slate-400 font-medium">เพิ่มบริการอื่นๆ หรือกำหนดเอง</span>
                                     </div>
                                 </label>
                             </div>
                             
-                            <div id="custom-name-container" class="hidden animate-fadeIn">
+                            <div id="custom-name-container" class="hidden animate-fadeIn mb-4">
                                 <input type="text" id="sub-name" placeholder="พิมพ์ชื่อบริการของคุณ..." class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-200 transition-colors duration-300">
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">หมวดหมู่</label>
+                                <select id="sub-category" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-slate-700 dark:text-slate-200 transition-colors duration-300">
+                                    <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="entertainment">🎬 บันเทิง (Entertainment)</option>
+                                    <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="work">💻 การทำงาน (Work)</option>
+                                    <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="utilities">⚡ สาธารณูปโภค (Utilities)</option>
+                                    <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="others">🛍️ อื่นๆ (Others)</option>
+                                </select>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ราคา (บาท)</label>
-                                <input type="number" id="sub-price" placeholder="199" min="0.01" step="0.01" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-200 transition-colors duration-300" required>
+                            <div class="col-span-2 sm:col-span-1">
+                                <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ราคาหลัก</label>
+                                <div class="flex">
+                                    <input type="number" id="sub-price" placeholder="199" min="0.01" step="0.01" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-200 transition-colors duration-300" required>
+                                    <select id="sub-currency" class="px-2 bg-slate-100 dark:bg-slate-700 border border-l-0 border-slate-200 dark:border-slate-600 rounded-r-xl focus:outline-none text-sm text-slate-700 dark:text-slate-200 transition-colors duration-300">
+                                        <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="THB">บาท</option>
+                                        <option class="bg-white dark:bg-slate-700 dark:text-slate-200" value="USD">USD</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
+                            
+                            <!-- Extra Price Field -->
+                            <div id="extra-price-container" class="hidden animate-fadeIn">
+                                <label class="block text-xs font-medium text-amber-600 dark:text-amber-400 mb-1">ค่าใช้เกิน (บาท)</label>
+                                <input type="number" id="sub-extra-price" placeholder="0" min="0" step="0.01" class="w-full px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm dark:text-slate-200 transition-colors duration-300">
+                            </div>
+                            
+                            <!-- Cycle Selection Container -->
+                            <div id="cycle-container" class="col-span-2">
                                 <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">รอบการจ่าย</label>
                                 
                                 <div class="relative grid grid-cols-2 bg-slate-200/60 dark:bg-slate-700 p-1 rounded-xl transition-colors duration-300">
@@ -254,7 +455,20 @@
                             <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">วันตัดรอบบิลครั้งต่อไป</label>
                             <input type="date" id="sub-date" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-200 transition-colors duration-300" required>
                         </div>
-                        <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition duration-200 shadow-sm active:scale-[0.98] text-sm flex items-center justify-center space-x-2">
+                        
+
+
+                        <div class="flex items-start mt-2 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div class="flex h-5 items-center">
+                                <input id="sub-is-active" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-700 dark:ring-offset-slate-800">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="sub-is-active" class="font-medium text-slate-700 dark:text-slate-200 cursor-pointer">เปิดใช้งาน (Active)</label>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">เอาติ๊กออกเพื่อพักการใช้งาน (ระงับการคำนวณชั่วคราว)</p>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition duration-200 shadow-sm active:scale-[0.98] text-sm flex items-center justify-center space-x-2 mt-4">
                             <i class="fa-solid fa-plus"></i><span id="submit-btn-text">บันทึกบริการ</span>
                         </button>
                         <!-- Form Error Message -->
@@ -264,6 +478,44 @@
                 
             </div>
         </main>
+
+        <!-- Paid Modal -->
+        <div id="paid-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl w-11/12 max-w-xs transform scale-95 transition-all duration-300" id="paid-modal-content">
+                <div class="text-center">
+                    <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-4">
+                        <i class="fa-solid fa-check text-emerald-500 dark:text-emerald-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">ยืนยันการชำระเงิน</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">ระบบจะบันทึกประวัติการจ่ายบิลรอบนี้ และเลื่อนวันตัดรอบบิลไปรอบถัดไปให้อัตโนมัติ</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="cancel-paid-btn" class="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-xl transition duration-200 text-sm">
+                        ยกเลิก
+                    </button>
+                    <button id="confirm-paid-btn" class="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-xl transition duration-200 text-sm shadow-sm flex items-center justify-center space-x-2">
+                        <span>ยืนยัน</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl w-11/12 max-w-sm transform scale-95 transition-all duration-300" id="history-modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i>ประวัติการชำระเงิน
+                    </h3>
+                    <button id="close-history-btn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <div id="history-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    <!-- History items injected here -->
+                </div>
+            </div>
+        </div>
 
         <!-- Delete Modal -->
         <div id="delete-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center opacity-0 transition-opacity duration-300">
@@ -285,10 +537,52 @@
                 </div>
             </div>
         </div>
+
+        <!-- Profile Modal -->
+        <div id="profile-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl w-11/12 max-w-sm transform scale-95 transition-all duration-300" id="profile-modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">โปรไฟล์ผู้ใช้</h3>
+                    <button id="close-profile-btn" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <form id="profile-form" class="space-y-4">
+                    <div class="flex justify-center mb-2">
+                        <div class="w-24 h-24 rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-4 border-white dark:border-slate-800 shadow-md overflow-hidden flex items-center justify-center relative">
+                            <span id="profile-modal-initial" class="text-3xl font-bold text-indigo-500 dark:text-indigo-400">U</span>
+                            <img id="profile-modal-img" src="" class="hidden w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ชื่อที่แสดง</label>
+                        <input type="text" id="profile-name" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-200 transition-colors duration-300" placeholder="ตั้งชื่อของคุณ (เช่น John Doe)">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">ลิงก์รูปโปรไฟล์ (URL)</label>
+                        <input type="url" id="profile-photo-url" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-200 transition-colors duration-300" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <button type="submit" id="save-profile-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition duration-200 shadow-sm mt-4 text-sm">
+                        บันทึกการเปลี่ยนแปลง
+                    </button>
+                </form>    
+                <p id="profile-error" class="text-center text-rose-500 text-sm hidden"></p>
+                <p id="profile-success" class="text-center text-emerald-500 text-sm hidden">อัปเดตโปรไฟล์เรียบร้อยแล้ว!</p>
+            </div>
+        </div>
         
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
