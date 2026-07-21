@@ -1,0 +1,75 @@
+/* style.css */
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  background: transparent;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Safe area for mobile bottom nav (iOS mostly) */
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* View transition for SPA */
+.view-section {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Nav button active states */
+.nav-btn.active {
+    background-color: rgb(238, 242, 255); /* indigo-50 */
+    color: rgb(79, 70, 229); /* indigo-600 */
+}
+.dark .nav-btn.active {
+    background-color: rgba(99, 102, 241, 0.1); /* indigo-500/10 */
+    color: rgb(129, 140, 248); /* indigo-400 */
+}
+
+.nav-btn-mobile.active {
+    color: rgb(79, 70, 229); /* indigo-600 */
+}
+.dark .nav-btn-mobile.active {
+    color: rgb(129, 140, 248); /* indigo-400 */
+}
+
+/* Toast animations */
+@keyframes slideDown {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideUpFade {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-100%); opacity: 0; }
+}
+
+.toast-enter {
+    animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.toast-exit {
+    animation: slideUpFade 0.3s ease-in forwards;
+}
+
+/* Fix calendar icon color in dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.6;
+    cursor: pointer;
+}
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.9;
+}

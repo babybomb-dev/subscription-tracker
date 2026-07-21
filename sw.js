@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtracker-v2';
+const CACHE_NAME = 'subtracker-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -35,6 +35,13 @@ self.addEventListener('activate', event => {
 // Network First strategy
 self.addEventListener('fetch', event => {
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request).catch(() => {
+      return caches.match(event.request).then(response => {
+        if (response) {
+          return response;
+        }
+        return new Response('Not found', { status: 404, statusText: 'Not found' });
+      });
+    })
   );
 });
