@@ -11,7 +11,10 @@ export const subscriptionPresets = [
     
     // Software & Cloud
     { id: 'icloud', name: 'Apple iCloud', category: 'software', domain: 'icloud.com' },
-    { id: 'google', name: 'Google One', category: 'software', domain: 'google.com' },
+    { id: 'google', name: 'Google One', category: 'software', domain: 'one.google.com' },
+    { id: 'gdrive', name: 'Google Drive', category: 'software', domain: 'drive.google.com' },
+    { id: 'gemini', name: 'Google Gemini', category: 'software', domain: 'gemini.google.com' },
+    { id: 'workspace', name: 'Google Workspace', category: 'software', domain: 'workspace.google.com' },
     { id: 'microsoft', name: 'Microsoft 365', category: 'software', domain: 'microsoft.com' },
     { id: 'adobe', name: 'Adobe Creative Cloud', category: 'software', domain: 'adobe.com' },
     { id: 'chatgpt', name: 'ChatGPT Plus', category: 'software', domain: 'openai.com' },
