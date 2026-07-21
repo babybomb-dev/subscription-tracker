@@ -24,6 +24,10 @@ export const subscriptionPresets = [
     { id: 'nintendo', name: 'Nintendo Switch Online', category: 'game', domain: 'nintendo.com' },
 
     // Utilities
+    { id: 'home-internet', name: 'เน็ตบ้าน', category: 'utilities', icon: '<i class="fa-solid fa-wifi"></i>', iconColor: 'text-indigo-500', iconBg: 'bg-indigo-100 dark:bg-indigo-900/30' },
+    { id: 'mobile', name: 'มือถือ', category: 'utilities', icon: '<i class="fa-solid fa-mobile-screen"></i>', iconColor: 'text-teal-500', iconBg: 'bg-teal-100 dark:bg-teal-900/30' },
+    { id: 'water', name: 'ค่าน้ำ', category: 'utilities', icon: '<i class="fa-solid fa-faucet-drip"></i>', iconColor: 'text-blue-500', iconBg: 'bg-blue-100 dark:bg-blue-900/30' },
+    { id: 'electric', name: 'ค่าไฟ', category: 'utilities', icon: '<i class="fa-solid fa-bolt"></i>', iconColor: 'text-amber-500', iconBg: 'bg-amber-100 dark:bg-amber-900/30' },
     { id: 'ais', name: 'AIS', category: 'utilities', domain: 'ais.th' },
     { id: 'true', name: 'TrueMove H', category: 'utilities', domain: 'true.th' },
     { id: 'dtac', name: 'dtac', category: 'utilities', domain: 'dtac.co.th' },

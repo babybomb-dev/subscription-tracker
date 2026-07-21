@@ -1135,6 +1135,8 @@ function renderPresets() {
                     if (preset.domain) {
                         iconHTML = '<img src="https://www.google.com/s2/favicons?domain=' + preset.domain + '&sz=128" class="w-full h-full object-contain p-2" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" />' +
                                    '<div class="hidden w-full h-full items-center justify-center text-slate-400 text-xl"><i class="fa-solid fa-box"></i></div>';
+                    } else if (preset.icon) {
+                        iconHTML = `<div class="w-full h-full flex items-center justify-center text-xl ${preset.iconColor || 'text-indigo-500'} ${preset.iconBg || ''}">${preset.icon}</div>`;
                     } else {
                         const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(preset.name)}&background=random&color=fff&size=128&bold=true`;
                         iconHTML = '<img src="' + fallbackUrl + '" class="w-full h-full object-contain p-1 rounded-xl" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" />' +

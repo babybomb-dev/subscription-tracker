@@ -103,6 +103,10 @@ export function getLogoHTML(subName, catId) {
             <img src="https://www.google.com/s2/favicons?domain=${preset.domain}&sz=128" class="w-full h-full object-contain p-1.5" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
             <div class="hidden w-full h-full items-center justify-center">${getCategoryIcon(catId)}</div>
         `;
+    } else if (preset && preset.icon) {
+        return `
+            <div class="w-full h-full flex items-center justify-center text-2xl ${preset.iconColor || 'text-indigo-500'} ${preset.iconBg || ''}">${preset.icon}</div>
+        `;
     } else {
         // Fallback to UI-Avatars to avoid ugly google globe
         const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(subName)}&background=random&color=fff&size=128&bold=true`;
