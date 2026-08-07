@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th" class="light">
 <head>
     <meta charset="UTF-8">
@@ -142,14 +142,12 @@
                 <button data-view="history" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
                     <i class="fa-solid fa-clock-rotate-left w-5"></i> ประวัติ
                 </button>
-                <button data-view="achievements" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
-                    <i class="fa-solid fa-trophy w-5 text-amber-500"></i> ความสำเร็จ
-                </button>
+
                 <button data-view="analytics" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
                     <i class="fa-solid fa-chart-line w-5"></i> รายงานเชิงลึก
                 </button>
                 <button data-view="calendar" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
-                    <i class="fa-solid fa-calendar-days w-5"></i> ปฏิทินแบบเต็ม
+                    <i class="fa-solid fa-calendar-days w-5"></i> ตารางชำระเงิน
                 </button>
                 <button data-view="settings" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
                     <i class="fa-solid fa-gear w-5"></i> ตั้งค่าขั้นสูง
@@ -464,10 +462,6 @@
                     <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-clock-rotate-left mr-2 text-indigo-500"></i> ประวัติชำระเงิน</h2>
-                            <div class="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg w-full sm:w-auto">
-                                <button id="btn-hist-list" class="flex-1 sm:flex-none px-4 py-1.5 text-sm sm:text-xs font-medium rounded-md bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-white transition-all">ประวัติ</button>
-                                <button id="btn-hist-calendar" class="flex-1 sm:flex-none px-4 py-1.5 text-sm sm:text-xs font-medium rounded-md text-slate-500 hover:text-slate-700 dark:text-slate-400 transition-all">ปฏิทินรายเดือน</button>
-                            </div>
                         </div>
                         
                         <!-- History List View -->
@@ -479,10 +473,7 @@
                             </div>
                         </div>
 
-                        <!-- Monthly Calendar View -->
-                        <div id="monthly-calendar-container" class="w-full hidden">
-                            <!-- Injected by JS -->
-                        </div>
+
                     </div>
                 </div>
                 
@@ -556,56 +547,27 @@
                 <div id="view-calendar" class="view-section space-y-6 hidden">
                     <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
                         <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-calendar-days mr-2 text-indigo-500"></i> ปฏิทินแบบเต็ม</h2>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-calendar-days mr-2 text-indigo-500"></i> ตารางชำระเงิน</h2>
                             <div class="flex gap-2">
                                 <button id="btn-full-cal-prev" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200"><i class="fa-solid fa-chevron-left"></i></button>
-                                <span id="full-cal-month-year" class="font-bold text-slate-800 dark:text-slate-200 flex items-center px-2">มกราคม 2026</span>
+                                <span id="full-cal-month-year" class="font-bold text-slate-800 dark:text-slate-200 flex items-center px-2 text-sm sm:text-base">มกราคม 2026</span>
                                 <button id="btn-full-cal-next" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200"><i class="fa-solid fa-chevron-right"></i></button>
                             </div>
                         </div>
-                        <div id="full-calendar-grid" class="w-full">
+                        
+                        <!-- Desktop Grid View (hidden on mobile) -->
+                        <div id="full-calendar-grid" class="w-full hidden md:block">
+                            <!-- Injected by JS -->
+                        </div>
+                        
+                        <!-- Mobile Agenda View (hidden on desktop) -->
+                        <div id="full-calendar-agenda" class="w-full block md:hidden space-y-4 mt-2">
                             <!-- Injected by JS -->
                         </div>
                     </div>
                 </div>
 
                 <!-- VIEW: SETTINGS -->
-                <!-- Achievements & Graveyard View -->
-                <div id="view-achievements" class="view-section space-y-6 hidden">
-                    <div class="flex items-center gap-3 mb-6">
-                        <i class="fa-solid fa-trophy text-2xl text-amber-500"></i>
-                        <h2 class="text-2xl font-black text-slate-800 dark:text-white">ความสำเร็จ & สุสานบริการ</h2>
-                    </div>
-
-                    <!-- Hero: Total Saved -->
-                    <div class="bg-gradient-to-r from-amber-400 to-orange-500 rounded-3xl p-6 text-white text-center shadow-lg relative overflow-hidden">
-                        <div class="absolute -right-10 -top-10 opacity-20">
-                            <i class="fa-solid fa-medal text-9xl"></i>
-                        </div>
-                        <p class="text-amber-100 font-medium mb-2 relative z-10">ยอดเงินที่คุณประหยัดได้ (ต่อปี)</p>
-                        <h3 class="text-4xl md:text-5xl font-black mb-1 relative z-10 tracking-tight" id="achievements-total-saved">฿0.00</h3>
-                        <p class="text-sm text-amber-100 relative z-10">จากการยกเลิกบริการที่ไม่จำเป็น</p>
-                    </div>
-
-                    <!-- Badges Section -->
-                    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-                        <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4"><i class="fa-solid fa-award text-indigo-500 mr-2"></i> เหรียญตราความสำเร็จ</h3>
-                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-4" id="badges-container">
-                            <!-- Rendered via JS -->
-                        </div>
-                    </div>
-
-                    <!-- The Graveyard Section -->
-                    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-bold text-slate-800 dark:text-white"><i class="fa-solid fa-tombstone text-slate-400 mr-2"></i> สุสานบริการ (Graveyard)</h3>
-                        </div>
-                        <div class="space-y-3" id="graveyard-list">
-                            <!-- Rendered via JS -->
-                        </div>
-                    </div>
-                </div>
-
                 <div id="view-settings" class="view-section space-y-6 hidden">
                     <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6"><i class="fa-solid fa-gear mr-2 text-indigo-500"></i> ตั้งค่าขั้นสูง</h2>
@@ -925,14 +887,14 @@
     <!-- Confirm Delete Modal -->
     <div id="modal-confirm" class="fixed inset-x-0 bottom-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 bg-white dark:bg-slate-900 rounded-t-3xl lg:rounded-3xl shadow-2xl z-[80] w-full lg:max-w-sm transform translate-y-full lg:translate-y-4 lg:scale-95 lg:opacity-0 transition-all duration-300 p-6 hidden">
         <div class="text-center">
-            <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center text-3xl mx-auto mb-4">
-                <i class="fa-solid fa-box-archive"></i>
+            <div class="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 flex items-center justify-center text-3xl mx-auto mb-4">
+                <i class="fa-solid fa-trash-can"></i>
             </div>
-            <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">ยกเลิกและย้ายลงสุสาน?</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">บริการนี้จะถูกย้ายไปยัง "สุสานบริการ" เพื่อนำไปคิดสถิติเงินที่คุณประหยัดได้ คุณสามารถลบถาวรได้ในภายหลัง</p>
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">ลบรายการนี้?</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้? การกระทำนี้ไม่สามารถกู้คืนได้</p>
             <div class="flex gap-3">
                 <button id="btn-cancel-delete" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold transition-colors">ยกเลิก</button>
-                <button id="btn-confirm-delete" class="flex-1 py-3 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors shadow-md">ย้ายลงสุสาน</button>
+                <button id="btn-confirm-delete" class="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold transition-colors shadow-md">ลบรายการ</button>
             </div>
         </div>
     </div>
@@ -1034,7 +996,7 @@
     <div id="modal-noti" class="fixed inset-x-0 bottom-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 bg-white dark:bg-slate-900 rounded-t-3xl lg:rounded-3xl shadow-2xl z-[70] w-full lg:max-w-md transform translate-y-full lg:translate-y-4 lg:scale-95 lg:opacity-0 transition-all duration-300 max-h-[80vh] flex flex-col hidden">
         <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <h3 class="text-xl font-bold text-slate-900 dark:text-white"><i class="fa-solid fa-bell text-indigo-500 mr-2"></i> การแจ้งเตือน</h3>
-            <button class="modal-close w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+            <button class="btn-close-modal w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
