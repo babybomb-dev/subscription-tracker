@@ -13,7 +13,9 @@ import {
     where, 
     setDoc,
     getDoc,
-    orderBy 
+    orderBy,
+    writeBatch,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "../../firebase-config.js";
 
@@ -140,4 +142,62 @@ export function listenPaymentHistory(userId, callback) {
         console.error("Error listening to payment history: ", error);
         callback([], error);
     });
+}
+
+// Admin Functions
+export async function getAllUsers() {
+    const { getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    const users = [];
+    querySnapshot.forEach((doc) => {
+        users.push({ id: doc.id, ...doc.data() });
+    });
+    return users;
+}
+
+export async function getAllSubscriptionsForSupport() {
+    const { getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+    const subscriptions = [];
+    querySnapshot.forEach((subscriptionDoc) => {
+        subscriptions.push({ id: subscriptionDoc.id, ...subscriptionDoc.data() });
+    });
+    return subscriptions;
+}
+
+export async function updateUserRole(userId, newRole, legacyPremium = false) {
+    const docRef = doc(db, 'users', userId);
+    const update = { role: newRole };
+    if (legacyPremium) update.plan = 'premium';
+    return await updateDoc(docRef, update);
+}
+
+export async function migrateLegacyPremiumUser(userId) {
+    const docRef = doc(db, 'users', userId);
+    return await updateDoc(docRef, { role: 'user', plan: 'premium' });
+}
+
+// Premium Purchase Simulation
+export async function purchaseLifetimePremium(userId) {
+    const batch = writeBatch(db);
+    const purchaseRef = doc(db, 'premium_purchases', userId);
+    const userRef = doc(db, 'users', userId);
+    const purchasedAt = serverTimestamp();
+
+    batch.set(purchaseRef, {
+        userId,
+        plan: 'lifetime',
+        amount: 99,
+        currency: 'THB',
+        status: 'approved',
+        createdAt: purchasedAt
+    });
+
+    batch.update(userRef, {
+        plan: 'premium',
+        premiumPlan: 'lifetime',
+        premiumSince: purchasedAt
+    });
+
+    return await batch.commit();
 }

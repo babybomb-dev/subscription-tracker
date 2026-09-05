@@ -48,14 +48,37 @@ function applyTheme(themeSetting) {
     
     if (isDark) {
         document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
     } else {
         document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+    }
+
+    // Update icons
+    const toggleBtns = [document.getElementById('btn-theme-mobile'), document.getElementById('btn-theme-desktop')];
+    toggleBtns.forEach(btn => {
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (icon) {
+                if (isDark) {
+                    icon.className = 'fa-solid fa-sun ' + (btn.id === 'btn-theme-mobile' ? 'text-xs' : '');
+                } else {
+                    icon.className = 'fa-solid fa-moon ' + (btn.id === 'btn-theme-mobile' ? 'text-xs' : '');
+                }
+            }
+        }
+    });
+
+    // Update Profile Theme Select
+    const themeSelect = document.getElementById('profile-theme-select');
+    if (themeSelect) {
+        themeSelect.value = themeSetting || 'auto';
     }
 }
 
 // --- Navigation Management ---
 export function switchView(viewId) {
-    const views = ['dashboard', 'list', 'history', 'analytics', 'calendar', 'achievements', 'settings'];
+    const views = ['dashboard', 'list', 'history', 'analytics', 'calendar', 'achievements', 'settings', 'staff', 'admin'];
     views.forEach(v => {
         const el = document.getElementById(`view-${v}`);
         if (el) el.classList.add('hidden');
@@ -117,6 +140,7 @@ export function closeAllModals() {
     closeModal(document.getElementById('modal-profile'));
     closeModal(document.getElementById('modal-year-in-review'));
     closeModal(document.getElementById('modal-category'));
+    closeModal(document.getElementById('modal-noti'));
 }
 
 // --- Toasts ---
@@ -330,13 +354,17 @@ export function renderUpcomingList(subs, onPayClick, onQrClick, exchangeRates = 
         }
 
         let currencyDisplay = sub.currency || 'THB';
-        if (currencyDisplay === 'USD') {
-            const thbEquivalent = (parseFloat(sub.price) * exchangeRate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            currencyDisplay = `USD (≈ ${thbEquivalent} บ.)`;
+        const cCode = currencyDisplay.toLowerCase();
+        if (cCode !== 'thb') {
+            const rate = exchangeRates && exchangeRates[cCode] ? Number(exchangeRates[cCode]) : 0;
+            if (rate > 0) {
+                const thbEquivalent = (parseFloat(sub.price) / rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                currencyDisplay = `${currencyDisplay} (≈ ${thbEquivalent} บ.)`;
+            }
         }
 
         const card = document.createElement('div');
-        card.className = `shrink-0 w-36 lg:w-full ${bgColor} border rounded-2xl p-3 shadow-sm snap-start flex flex-col justify-between transition-transform hover:-translate-y-1 relative`;
+        card.className = `w-full ${bgColor} border rounded-2xl p-3 shadow-sm snap-start flex flex-col justify-between transition-transform hover:-translate-y-1 relative`;
         card.innerHTML = `
             <div class="flex justify-between items-start mb-2">
                 <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-sm shrink-0 overflow-hidden">

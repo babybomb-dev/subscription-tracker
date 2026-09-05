@@ -19,7 +19,12 @@ import {
     saveUserSettings,
     getUserSettings,
     addPaymentHistory,
-    listenPaymentHistory
+    listenPaymentHistory,
+    getAllUsers,
+    getAllSubscriptionsForSupport,
+    updateUserRole,
+    migrateLegacyPremiumUser,
+    purchaseLifetimePremium
 } from './services/database.js';
 import { 
     initTheme, changeTheme, switchView, 
@@ -43,13 +48,28 @@ import { initNotifications, requestNotificationPermission, checkUpcomingNotifica
 import { subscriptionPresets } from './utils/presets.js';
 import { initPWA } from './pwa.js';
 import { calculateNextBillingDate, getCategoryName, updateCustomCategories } from './utils/helpers.js';
+import { resolveUserAccess, canAccessView, hasPremiumPlan } from './utils/access.js';
 
 // --- Global State ---
 export let currentUser = null;
+export let currentUserRole = 'user'; // 'user', 'staff', 'admin'
+export let currentUserPlan = 'free'; // 'free', 'premium'
 export let currentSubs = [];
 export let currentHistory = [];
 export let unsubscribeSubs = null;
 export let unsubscribeHistory = null;
+
+let premiumPurchaseInProgress = false;
+let managementUsers = [];
+let managementSubscriptions = [];
+
+// Role Helpers
+export const isUser = () => currentUserRole === 'user';
+export const isStaff = () => currentUserRole === 'staff';
+export const isAdmin = () => currentUserRole === 'admin';
+export const isPremium = () => currentUserPlan === 'premium';
+export const hasPremiumAccess = () => hasPremiumPlan(currentUserPlan, currentUserRole);
+
 export let state = {
     exchangeRates: { usd: 0.028, eur: 0.025, gbp: 0.021, jpy: 4.3, sgd: 0.038 }, // Fallback values relative to 1 THB
     cycle: 'monthly', // 'monthly' or 'yearly'
@@ -90,6 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
             loadUserData();
         } else {
             currentUser = null;
+            currentUserRole = 'user';
+            currentUserPlan = 'free';
             showAuthScreen();
             if (unsubscribeSubs) unsubscribeSubs();
             if (unsubscribeHistory) unsubscribeHistory();
@@ -214,6 +236,19 @@ async function showAppScreen() {
     try {
         const settings = await getUserSettings(currentUser.uid);
         if (settings) {
+            const access = resolveUserAccess(settings);
+            currentUserRole = access.role;
+            currentUserPlan = access.plan;
+
+            if (access.legacyPremium) {
+                try {
+                    await migrateLegacyPremiumUser(currentUser.uid);
+                } catch (migrationError) {
+                    // Compatibility remains active in memory even if rules are not deployed yet.
+                    console.warn('Legacy Premium migration deferred.', migrationError);
+                }
+            }
+            
             if (settings.budget !== undefined) {
                 state.budget = parseFloat(settings.budget);
                 document.getElementById('budget-input').value = state.budget;
@@ -223,10 +258,20 @@ async function showAppScreen() {
                 state.customCategories = settings.customCategories;
                 populateCategoryDropdowns();
             }
+        } else {
+            currentUserRole = 'user';
+            currentUserPlan = 'free';
+            await saveUserSettings(currentUser.uid, { role: 'user', plan: 'free', email: currentUser.email });
         }
     } catch (e) {
         console.error("Failed to load user settings", e);
+        currentUserRole = 'user'; // Fallback
+        currentUserPlan = 'free';
     }
+
+    updateManagementUI();
+    updateRoleBadges();
+    updatePremiumUpgradeUI();
 
     // Populate Profile Modal
     document.getElementById('profile-modal-name').textContent = name;
@@ -317,6 +362,209 @@ function renderSmartGreeting(activeSubs, totalCost, budget) {
     }
     
     insightEl.textContent = insight;
+}
+
+function updateManagementUI() {
+    const navAdminBtn = document.getElementById('nav-btn-admin');
+    const navAdminBtnMobile = document.getElementById('nav-btn-admin-mobile');
+    const navStaffBtn = document.getElementById('nav-btn-staff');
+    const navStaffBtnMobile = document.getElementById('nav-btn-staff-mobile');
+
+    [navAdminBtn, navAdminBtnMobile].forEach(btn => btn?.classList.toggle('hidden', !isAdmin()));
+    [navStaffBtn, navStaffBtnMobile].forEach(btn => btn?.classList.toggle('hidden', !isStaff()));
+
+    for (const restrictedView of ['admin', 'staff']) {
+        const view = document.getElementById(`view-${restrictedView}`);
+        if (view && !view.classList.contains('hidden') && !canAccessView(restrictedView, currentUserRole)) {
+            navigateToView('dashboard');
+        }
+    }
+}
+
+function updateRoleBadges() {
+    const role = currentUserRole || 'user';
+    const roleText = role === 'admin' ? 'Admin' :
+                     role === 'staff' ? 'Staff' : 'User';
+                      
+    const roleClass = role === 'admin' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' :
+                      role === 'staff' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' :
+                      'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
+                      
+    const badgeDesktop = document.getElementById('role-badge-desktop');
+    if (badgeDesktop) {
+        badgeDesktop.textContent = roleText;
+        badgeDesktop.className = `text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${roleClass}`;
+    }
+    const planBadgeDesktop = document.getElementById('plan-badge-desktop');
+    if (planBadgeDesktop) {
+        planBadgeDesktop.textContent = currentUserPlan === 'premium' ? 'Premium' : 'Free';
+        planBadgeDesktop.className = `text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${currentUserPlan === 'premium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`;
+    }
+    
+    const badgeModal = document.getElementById('role-badge-modal');
+    if (badgeModal) {
+        badgeModal.textContent = `${roleText} · ${currentUserPlan === 'premium' ? 'Premium' : 'Free'}`;
+        badgeModal.className = `text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ml-2 ${roleClass}`;
+    }
+}
+
+function updatePremiumUpgradeUI() {
+    const upgradeBtn = document.getElementById('btn-upgrade-premium');
+    if (!upgradeBtn) return;
+    upgradeBtn.classList.toggle('hidden', currentUserPlan === 'premium' || isAdmin());
+}
+
+function openPremiumPurchaseModal() {
+    if (!currentUser || currentUserPlan === 'premium' || isAdmin()) {
+        showToast('บัญชีนี้ไม่สามารถซื้อแพ็กเกจ Premium ได้', 'error');
+        return;
+    }
+
+    const profileModal = document.getElementById('modal-profile');
+    if (profileModal) profileModal.classList.add('hidden');
+
+    const reference = `DEMO-PREMIUM-99-${currentUser.uid}`;
+    const qrContainer = document.getElementById('premium-demo-qrcode');
+    const referenceEl = document.getElementById('premium-demo-reference');
+    if (referenceEl) referenceEl.textContent = reference;
+    if (qrContainer) {
+        qrContainer.innerHTML = '';
+        if (window.QRCode) {
+            new QRCode(qrContainer, {
+                text: reference,
+                width: 160,
+                height: 160,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        } else {
+            qrContainer.textContent = reference;
+        }
+    }
+
+    openModal(document.getElementById('modal-premium-purchase'));
+}
+
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[char]));
+}
+
+function formatJoinedDate(createdAt) {
+    if (!createdAt) return '-';
+    const date = typeof createdAt.toDate === 'function' ? createdAt.toDate() : new Date(createdAt);
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('th-TH');
+}
+
+function getUserSubscriptionSummary(userId) {
+    const subscriptions = managementSubscriptions.filter(sub => sub.userId === userId);
+    const paused = subscriptions.filter(sub => sub.status === 'paused').length;
+    const monthlyTHB = subscriptions.reduce((total, sub) => {
+        let amount = Number(sub.price) || 0;
+        if ((sub.currency || 'THB').toUpperCase() !== 'THB') {
+            amount /= state.exchangeRates[(sub.currency || '').toLowerCase()] || 1;
+        }
+        if (sub.cycle === 'yearly') amount /= 12;
+        return total + amount;
+    }, 0);
+    return { count: subscriptions.length, paused, monthlyTHB };
+}
+
+function renderManagementUsers(panel) {
+    const tbody = document.getElementById(`${panel}-user-list`);
+    if (!tbody) return;
+    const search = (document.getElementById(`${panel}-user-search`)?.value || '').trim().toLowerCase();
+    const roleFilter = document.getElementById(`${panel}-role-filter`)?.value || 'all';
+    const planFilter = document.getElementById(`${panel}-plan-filter`)?.value || 'all';
+
+    const users = managementUsers.filter(user => {
+        const access = resolveUserAccess(user);
+        const matchesSearch = !search || (user.email || '').toLowerCase().includes(search) ||
+            (user.displayName || '').toLowerCase().includes(search);
+        return matchesSearch && (roleFilter === 'all' || access.role === roleFilter) &&
+            (planFilter === 'all' || access.plan === planFilter);
+    });
+
+    tbody.innerHTML = '';
+    if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-8 px-4 text-center text-slate-400">ไม่พบผู้ใช้งาน</td></tr>';
+        return;
+    }
+
+    users.forEach(user => {
+        const access = resolveUserAccess(user);
+        const summary = getUserSubscriptionSummary(user.id);
+        const roleColors = access.role === 'admin' ? 'text-indigo-600' : access.role === 'staff' ? 'text-sky-600' : 'text-slate-500';
+        const planBadge = access.plan === 'premium'
+            ? '<span class="text-amber-600 font-bold">Premium</span>'
+            : '<span class="text-slate-500">Free</span>';
+        const canChangeRole = panel === 'admin' && user.id !== currentUser.uid && access.role !== 'admin';
+        let action = '';
+        if (canChangeRole && access.role === 'user') {
+            action = `<button data-change-role="staff" data-user-id="${escapeHTML(user.id)}" data-legacy-premium="${access.legacyPremium}" class="text-xs bg-sky-100 text-sky-700 px-2 py-1 rounded hover:bg-sky-200">Promote to Staff</button>`;
+        } else if (canChangeRole && access.role === 'staff') {
+            action = `<button data-change-role="user" data-user-id="${escapeHTML(user.id)}" class="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded hover:bg-slate-200">Demote to User</button>`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50';
+        tr.innerHTML = `
+            <td class="py-3 px-4"><div class="font-medium">${escapeHTML(user.displayName || '-')}</div><div class="text-xs text-slate-400 truncate max-w-[180px]">${escapeHTML(user.email || 'Unknown')}</div></td>
+            <td class="py-3 px-4 font-bold ${roleColors}">${escapeHTML(access.role)}</td>
+            <td class="py-3 px-4">${planBadge}</td>
+            <td class="py-3 px-4 whitespace-nowrap">${summary.count} รายการ (${summary.paused} พัก)<div class="text-xs text-slate-400">≈ ฿${summary.monthlyTHB.toLocaleString('th-TH', { maximumFractionDigits: 2 })}/เดือน</div></td>
+            <td class="py-3 px-4 whitespace-nowrap">${formatJoinedDate(user.createdAt)}</td>
+            <td class="py-3 px-4 text-right whitespace-nowrap">${action}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+export async function loadManagementUsers(panel) {
+    const allowed = panel === 'admin' ? isAdmin() : isStaff();
+    if (!allowed) {
+        showToast('ไม่มีสิทธิ์เข้าถึง', 'error');
+        navigateToView('dashboard');
+        return;
+    }
+    try {
+        [managementUsers, managementSubscriptions] = await Promise.all([
+            getAllUsers(), getAllSubscriptionsForSupport()
+        ]);
+        renderManagementUsers(panel);
+    } catch(err) {
+        console.error("Management load error:", err);
+        showToast('ไม่สามารถดึงข้อมูลผู้ใช้งานได้', 'error');
+    }
+}
+
+async function changeRole(userId, newRole, legacyPremium = false) {
+    if (!isAdmin()) return;
+    if (userId === currentUser.uid || (newRole !== 'user' && newRole !== 'staff')) {
+        showToast('การเปลี่ยน Role ไม่ถูกต้อง', 'error');
+        return;
+    }
+    try {
+        await updateUserRole(userId, newRole, legacyPremium);
+        showToast('อัปเดต Role สำเร็จ', 'success');
+        await loadManagementUsers('admin');
+    } catch(err) {
+        console.error("Change Role Error:", err);
+        showToast('อัปเดต Role ไม่สำเร็จ', 'error');
+    }
+}
+
+function navigateToView(view) {
+    if (!canAccessView(view, currentUserRole)) {
+        showToast('ไม่มีสิทธิ์เข้าถึง', 'error');
+        switchView('dashboard');
+        return false;
+    }
+    switchView(view);
+    if (view === 'admin' || view === 'staff') loadManagementUsers(view);
+    return true;
 }
 
 function updateUI() {
@@ -491,6 +739,10 @@ function updateUI() {
 
     // 5. Render Components
     const handleQrClick = (sub) => {
+        if (!hasPremiumAccess()) {
+            showToast('Feature นี้สำหรับ Premium User เท่านั้น', 'error');
+            return;
+        }
         const currencyCode = (sub.currency || 'THB').toLowerCase();
         let thbPrice = parseFloat(sub.price);
         if (currencyCode !== 'thb') {
@@ -577,16 +829,19 @@ function setupEventListeners() {
     initSettings();
     
     // Auth Forms
-    document.getElementById('link-to-register').addEventListener('click', (e) => {
+    const linkRegister = document.getElementById('link-to-register');
+    if (linkRegister) linkRegister.addEventListener('click', (e) => {
         e.preventDefault();
         showRegisterScreen();
     });
-    document.getElementById('link-to-login').addEventListener('click', (e) => {
+    const linkLogin = document.getElementById('link-to-login');
+    if (linkLogin) linkLogin.addEventListener('click', (e) => {
         e.preventDefault();
         showAuthScreen();
     });
 
-    document.getElementById('form-login').addEventListener('submit', async (e) => {
+    const formLogin = document.getElementById('form-login');
+    if (formLogin) formLogin.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-password').value;
@@ -605,7 +860,8 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById('form-register').addEventListener('submit', async (e) => {
+    const formRegister = document.getElementById('form-register');
+    if (formRegister) formRegister.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('register-name').value;
         const email = document.getElementById('register-email').value;
@@ -625,7 +881,8 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById('btn-google-login').addEventListener('click', async () => {
+    const btnGoogleLogin = document.getElementById('btn-google-login');
+    if (btnGoogleLogin) btnGoogleLogin.addEventListener('click', async () => {
         try {
             await loginWithGoogle();
         } catch (error) {
@@ -646,8 +903,34 @@ function setupEventListeners() {
     document.querySelectorAll('[data-view]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const view = e.currentTarget.dataset.view;
-            switchView(view);
+            navigateToView(view);
         });
+    });
+
+    const btnAdminRefresh = document.getElementById('btn-admin-refresh');
+    if (btnAdminRefresh) {
+        btnAdminRefresh.addEventListener('click', () => loadManagementUsers('admin'));
+    }
+    const btnStaffRefresh = document.getElementById('btn-staff-refresh');
+    if (btnStaffRefresh) {
+        btnStaffRefresh.addEventListener('click', () => loadManagementUsers('staff'));
+    }
+    for (const panel of ['admin', 'staff']) {
+        for (const suffix of ['user-search', 'role-filter', 'plan-filter']) {
+            document.getElementById(`${panel}-${suffix}`)?.addEventListener('input', () => renderManagementUsers(panel));
+            document.getElementById(`${panel}-${suffix}`)?.addEventListener('change', () => renderManagementUsers(panel));
+        }
+    }
+
+    document.getElementById('admin-user-list')?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-change-role]');
+        if (!button) return;
+        changeRole(button.dataset.userId, button.dataset.changeRole, button.dataset.legacyPremium === 'true');
+    });
+
+    window.addEventListener('hashchange', () => {
+        const requestedView = window.location.hash.replace(/^#\/?/, '');
+        if (requestedView) navigateToView(requestedView);
     });
 
     // History Toggle Handlers
@@ -764,6 +1047,61 @@ function setupEventListeners() {
             openModal(document.getElementById('modal-profile'));
         });
     }
+
+    const btnUpgradePremium = document.getElementById('btn-upgrade-premium');
+    if (btnUpgradePremium) {
+        btnUpgradePremium.addEventListener('click', openPremiumPurchaseModal);
+    }
+
+    const premiumModal = document.getElementById('modal-premium-purchase');
+    const btnClosePremium = document.getElementById('btn-close-premium-purchase');
+    if (btnClosePremium) {
+        btnClosePremium.addEventListener('click', () => closeModal(premiumModal));
+    }
+    document.getElementById('modal-backdrop').addEventListener('click', () => closeModal(premiumModal));
+
+    const btnConfirmPremium = document.getElementById('btn-confirm-premium-purchase');
+    if (btnConfirmPremium) {
+        btnConfirmPremium.addEventListener('click', async () => {
+            if (premiumPurchaseInProgress) return;
+            if (!currentUser || currentUserPlan === 'premium' || isAdmin()) {
+                showToast('สถานะบัญชีไม่ถูกต้องสำหรับการอัปเกรด', 'error');
+                return;
+            }
+
+            premiumPurchaseInProgress = true;
+            btnConfirmPremium.disabled = true;
+            const originalText = btnConfirmPremium.innerHTML;
+            btnConfirmPremium.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>กำลังอนุมัติ...';
+
+            let purchaseSuccess = false;
+            try {
+                await purchaseLifetimePremium(currentUser.uid);
+                purchaseSuccess = true;
+            } catch (error) {
+                console.error('Premium purchase failed:', error);
+                showToast('ไม่สามารถอัปเกรด Premium ได้ กรุณาลองใหม่', 'error');
+            }
+
+            if (purchaseSuccess) {
+                try {
+                    currentUserPlan = 'premium';
+                    updateManagementUI();
+                    updateRoleBadges();
+                    updatePremiumUpgradeUI();
+                    closeModal(premiumModal);
+                    showToast('อัปเกรดเป็น Premium สำเร็จ!', 'success');
+                } catch (uiError) {
+                    console.error('Post-purchase UI update error:', uiError);
+                    showToast('อัปเกรดเป็น Premium สำเร็จ!', 'success');
+                }
+            }
+
+            premiumPurchaseInProgress = false;
+            btnConfirmPremium.disabled = false;
+            btnConfirmPremium.innerHTML = originalText;
+        });
+    }
     
     // Profile Modal Navigation Buttons
     const btnProfileAchievements = document.getElementById('btn-profile-achievements');
@@ -819,6 +1157,10 @@ function setupEventListeners() {
     });
 
     const handleExportCSV = () => {
+        if (!hasPremiumAccess()) {
+            showToast('Feature นี้สำหรับ Premium User เท่านั้น', 'error');
+            return;
+        }
         if (!currentSubs || currentSubs.length === 0) {
             showToast('ไม่มีข้อมูลสำหรับส่งออก', 'error');
             return;
@@ -858,6 +1200,10 @@ function setupEventListeners() {
     const btnExportCsvDesktop = document.getElementById('btn-export-csv-desktop');
     if (btnExportCsvDesktop) {
         btnExportCsvDesktop.addEventListener('click', handleExportCSV);
+    }
+    const btnExportCsvModal = document.getElementById('btn-export-csv-modal');
+    if (btnExportCsvModal) {
+        btnExportCsvModal.addEventListener('click', handleExportCSV);
     }
 
     // Controls
@@ -1000,26 +1346,39 @@ function setupEventListeners() {
         });
     }
     
+    // Split Bill Button (if any inside active subs)
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-split-bill')) {
+            if (!hasPremiumAccess()) {
+                showToast('Feature นี้สำหรับ Premium User เท่านั้น', 'error');
+                return;
+            }
+            const btn = e.target.closest('.btn-split-bill');
+            const subId = btn.dataset.id;
+            // Get sub object (the handler in main.js passes an ID string instead of full object when using delegated event listener)
+            const sub = currentSubs.find(s => s.id === subId);
+            if (sub) {
+                let thbPrice = parseFloat(sub.price);
+                if (sub.currency !== 'THB') {
+                    const rate = state.exchangeRates[sub.currency.toLowerCase()] || 1;
+                    thbPrice = thbPrice / rate;
+                }
+                openSplitBillModal(sub, thbPrice, openModal);
+            }
+        }
+    });
+
+    // Year in Review Button
+    const btnYir = document.getElementById('btn-year-in-review');
+    if (btnYir) {
+        btnYir.addEventListener('click', () => {
+            const activeSubs = Array.isArray(state.subs) ? state.subs : [];
+            openYearInReview(activeSubs, state.exchangeRates);
+        });
+    }
+
     const btnSaveCategory = document.getElementById('btn-save-category');
     if (btnSaveCategory) {
-        // Split Bill Button (if any inside active subs)
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-split-bill')) {
-                const btn = e.target.closest('.btn-split-bill');
-                const subId = btn.dataset.id;
-                openSplitBillModal(subId);
-            }
-        });
-
-        // Year in Review Button
-        const btnYir = document.getElementById('btn-year-in-review');
-        if (btnYir) {
-            btnYir.addEventListener('click', () => {
-                const activeSubs = Array.isArray(state.subs) ? state.subs : [];
-                openYearInReview(activeSubs, state.exchangeRates);
-            });
-        }
-
         btnSaveCategory.addEventListener('click', async () => {
             const input = document.getElementById('custom-category-name');
             const catName = input.value.trim();

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th" class="light">
 <head>
     <meta charset="UTF-8">
@@ -45,6 +45,9 @@
 
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center pointer-events-none space-y-2"></div>
+
+    <!-- Tailwind Dark Mode Safelist: forces CDN to generate all dark: classes used in this app -->
+    <div aria-hidden="true" class="hidden dark:bg-slate-950 dark:bg-slate-900 dark:bg-slate-800 dark:bg-slate-700 dark:bg-slate-600 dark:text-white dark:text-slate-200 dark:text-slate-300 dark:text-slate-400 dark:text-slate-500 dark:border-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:bg-slate-800 dark:hover:bg-slate-900 dark:placeholder-slate-500 dark:bg-indigo-900 dark:bg-rose-900 dark:text-indigo-400 dark:text-rose-400 dark:ring-slate-700 dark:shadow-slate-900 dark:bg-emerald-900 dark:text-emerald-400"></div>
 
     <!-- ==================== AUTH SCREEN ==================== -->
     <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden hidden">
@@ -152,6 +155,12 @@
                 <button data-view="settings" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
                     <i class="fa-solid fa-gear w-5"></i> ตั้งค่าขั้นสูง
                 </button>
+                <button data-view="admin" id="nav-btn-admin" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all hidden">
+                    <i class="fa-solid fa-shield-halved w-5"></i> ผู้ดูแลระบบ
+                </button>
+                <button data-view="staff" id="nav-btn-staff" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all hidden">
+                    <i class="fa-solid fa-headset w-5"></i> เจ้าหน้าที่
+                </button>
                 <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                     <button id="btn-sidebar-add" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all">
                         <i class="fa-solid fa-plus"></i> เพิ่มรายการ
@@ -168,7 +177,11 @@
                             <span id="avatar-initial-desktop" class="text-indigo-700 dark:text-indigo-300 font-bold">U</span>
                         </div>
                         <div class="truncate">
-                            <p id="display-name-desktop" class="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">User</p>
+                            <div class="flex items-center gap-2">
+                                <p id="display-name-desktop" class="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">User</p>
+                                <span id="role-badge-desktop" class="hidden"></span>
+                                <span id="plan-badge-desktop" class="hidden"></span>
+                            </div>
                             <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate" id="display-email-desktop">email@example.com</p>
                         </div>
                     </div>
@@ -205,8 +218,14 @@
                     <button id="btn-theme-mobile" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
                         <i class="fa-solid fa-moon text-xs"></i>
                     </button>
-                    <button id="btn-logout-mobile" class="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                        <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                    <button data-view="settings" class="nav-btn-mobile w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300" title="ตั้งค่า">
+                        <i class="fa-solid fa-gear text-xs"></i>
+                    </button>
+                    <button data-view="admin" id="nav-btn-admin-mobile" class="nav-btn-mobile w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 hidden" title="ผู้ดูแลระบบ">
+                        <i class="fa-solid fa-shield-halved text-xs"></i>
+                    </button>
+                    <button data-view="staff" id="nav-btn-staff-mobile" class="nav-btn-mobile w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400 hidden" title="เจ้าหน้าที่">
+                        <i class="fa-solid fa-headset text-xs"></i>
                     </button>
                 </div>
             </header>
@@ -229,6 +248,10 @@
                             <span id="greeting-avatar-initial" class="absolute inset-0 flex items-center justify-center text-base md:text-lg font-bold text-slate-400 hidden">U</span>
                         </div>
                     </div>
+                    
+                    <button id="btn-upgrade-premium" type="button" class="hidden w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-3 rounded-xl font-bold shadow-md shadow-amber-500/20 transition-all active:scale-[0.98]">
+                        <i class="fa-solid fa-crown mr-2"></i>อัปเกรดเป็น Premium
+                    </button>
 
                     <!-- Top Summary Bento Cards -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
@@ -303,7 +326,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
                         
                         <!-- Donut Chart Section -->
-                        <div class="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col lg:col-span-1 h-full lg:min-h-[400px] transition-transform hover:-translate-y-1 hover:shadow-xl duration-300">
+                        <div class="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col lg:col-span-1 lg:min-h-[400px] transition-transform hover:-translate-y-1 hover:shadow-xl duration-300">
                             <div class="flex flex-wrap justify-between items-center gap-3 mb-4 md:mb-6">
                                 <h3 class="text-base md:text-lg font-bold text-slate-800 dark:text-slate-100">สัดส่วนค่าใช้จ่าย</h3>
                                 <div class="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex items-center">
@@ -319,7 +342,7 @@
                                         <span id="chart-center-count" class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100">0</span>
                                     </div>
                                 </div>
-                                <div id="chart-legend" class="w-full md:w-auto flex-1 space-y-2 max-h-[160px] md:max-h-[220px] overflow-y-auto pr-2 hide-scrollbar">
+                                <div id="chart-legend" class="w-full flex-1 space-y-2 max-h-[250px] md:max-h-[350px] overflow-y-auto pr-2 hide-scrollbar">
                                     <!-- Legend Injected by JS -->
                                     <p class="text-sm text-slate-500 text-center py-4">ยังไม่มีข้อมูล 📝</p>
                                 </div>
@@ -336,7 +359,7 @@
                                     </h3>
                                     <button class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400" onclick="document.querySelector('[data-view=\'list\']').click()">ดูทั้งหมด</button>
                                 </div>
-                                <div id="upcoming-container" class="flex flex-col gap-2 md:gap-3 overflow-y-auto pr-2 hide-scrollbar flex-1 min-h-0">
+                                <div id="upcoming-container" class="flex flex-col gap-2 md:gap-3 overflow-y-auto hide-scrollbar flex-1 min-h-0">
                                     <!-- Cards will be injected by JS -->
                                     <p class="text-sm text-slate-500 italic py-4 w-full text-center">ไม่มีรายการที่ต้องชำระ 🎉</p>
                                 </div>
@@ -350,7 +373,7 @@
                                     </h3>
                                     <button class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400" onclick="document.querySelector('[data-view=\'history\']').click()">ดูทั้งหมด</button>
                                 </div>
-                                <div id="latest-transactions-container" class="flex flex-col gap-2 md:gap-3 overflow-y-auto pr-2 hide-scrollbar flex-1 min-h-0">
+                                <div id="latest-transactions-container" class="flex flex-col gap-2 md:gap-3 overflow-y-auto hide-scrollbar flex-1 min-h-0">
                                     <!-- History Cards will be injected by JS -->
                                     <p class="text-sm text-slate-500 italic py-4 w-full text-center">ยังไม่มีประวัติ 📝</p>
                                 </div>
@@ -465,7 +488,7 @@
                         </div>
                         
                         <!-- History List View -->
-                        <div id="history-list-container" class="w-full space-y-4 max-h-[60vh] overflow-y-auto hide-scrollbar">
+                        <div id="history-list-container" class="w-full space-y-4 max-h-[80vh] overflow-y-auto hide-scrollbar">
                             <!-- Injected by JS -->
                             <div class="flex flex-col items-center justify-center h-48 text-slate-400">
                                 <i class="fa-solid fa-receipt text-4xl mb-3 opacity-30"></i>
@@ -641,7 +664,7 @@
                                         <span class="text-sm text-slate-800 dark:text-slate-200 font-bold">สำรองข้อมูล</span>
                                         <span class="text-xs text-slate-500 dark:text-slate-400">ดาวน์โหลดข้อมูลบริการของคุณเป็นไฟล์ Excel (.csv)</span>
                                     </div>
-                                    <button id="btn-export-csv" class="flex items-center gap-2 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
+                                    <button id="btn-export-csv-modal" class="flex items-center gap-2 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
                                         <i class="fa-solid fa-file-csv"></i> ส่งออก
                                     </button>
                                 </div>
@@ -649,7 +672,10 @@
                             
                             <hr class="border-slate-100 dark:border-slate-800">
                             
-                            <div class="flex justify-end">
+                            <div class="flex justify-end gap-3">
+                                <button id="btn-logout-mobile" class="lg:hidden bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50 font-bold py-2 px-6 rounded-xl shadow-sm transition-all flex items-center gap-2">
+                                    <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+                                </button>
                                 <button id="btn-save-settings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all">
                                     บันทึกการตั้งค่า
                                 </button>
@@ -658,42 +684,113 @@
                     </div>
                 </div>
                 
+                <!-- Admin Panel View -->
+                <div id="view-admin" class="view-section space-y-6 hidden">
+                    <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-users-gear mr-2 text-slate-400"></i> จัดการผู้ใช้งาน (Admin)</h2>
+                            <button id="btn-admin-refresh" class="text-slate-400 hover:text-indigo-500 transition-colors"><i class="fa-solid fa-rotate-right"></i></button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                            <input id="admin-user-search" type="search" placeholder="ค้นหาชื่อหรืออีเมล..." class="md:col-span-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select id="admin-role-filter" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm">
+                                <option value="all">ทุก Role</option><option value="user">User</option><option value="staff">Staff</option><option value="admin">Admin</option>
+                            </select>
+                            <select id="admin-plan-filter" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm">
+                                <option value="all">ทุก Plan</option><option value="free">Free</option><option value="premium">Premium</option>
+                            </select>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400">
+                                        <th class="py-3 px-4 font-medium">Account</th>
+                                        <th class="py-3 px-4 font-medium">Role</th>
+                                        <th class="py-3 px-4 font-medium">Plan</th>
+                                        <th class="py-3 px-4 font-medium">Subscriptions</th>
+                                        <th class="py-3 px-4 font-medium">Joined</th>
+                                        <th class="py-3 px-4 font-medium text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-user-list" class="text-sm text-slate-700 dark:text-slate-300">
+                                    <!-- Injected -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Staff Panel View -->
+                <div id="view-staff" class="view-section space-y-6 hidden">
+                    <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-headset mr-2 text-sky-500"></i> ข้อมูลผู้ใช้งาน (Staff)</h2>
+                                <p class="text-xs text-slate-400 mt-1">ข้อมูลสำหรับช่วยเหลือผู้ใช้แบบอ่านอย่างเดียว</p>
+                            </div>
+                            <button id="btn-staff-refresh" class="text-slate-400 hover:text-sky-500 transition-colors"><i class="fa-solid fa-rotate-right"></i></button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                            <input id="staff-user-search" type="search" placeholder="ค้นหาชื่อหรืออีเมล..." class="md:col-span-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                            <select id="staff-role-filter" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm">
+                                <option value="all">ทุก Role</option><option value="user">User</option><option value="staff">Staff</option><option value="admin">Admin</option>
+                            </select>
+                            <select id="staff-plan-filter" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm">
+                                <option value="all">ทุก Plan</option><option value="free">Free</option><option value="premium">Premium</option>
+                            </select>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead><tr class="border-b border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400">
+                                    <th class="py-3 px-4 font-medium">Account</th><th class="py-3 px-4 font-medium">Role</th><th class="py-3 px-4 font-medium">Plan</th><th class="py-3 px-4 font-medium">Subscriptions</th><th class="py-3 px-4 font-medium">Joined</th><th class="py-3 px-4 font-medium text-right">Access</th>
+                                </tr></thead>
+                                <tbody id="staff-user-list" class="text-sm text-slate-700 dark:text-slate-300"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
         <!-- BOTTOM NAVIGATION (Mobile Only) -->
         <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-50 py-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-            <div class="flex items-center justify-between px-6 w-full h-14 relative" style="-ms-overflow-style: none; scrollbar-width: none;">
+            <div class="flex items-center justify-around px-2 w-full h-14 relative" style="-ms-overflow-style: none; scrollbar-width: none;">
                 <style>
                     .hide-scrollbar::-webkit-scrollbar { display: none; }
                 </style>
-                <button data-view="dashboard" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-12 text-indigo-600 dark:text-indigo-400">
+                <button data-view="dashboard" class="nav-btn-mobile active flex-shrink-0 flex flex-col items-center justify-center w-14 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                     <i class="fa-solid fa-chart-pie text-xl mb-1"></i>
                     <span class="text-[9px] font-medium">หน้าหลัก</span>
                 </button>
-                <button data-view="list" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-12 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                <button data-view="list" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-14 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                     <i class="fa-solid fa-list text-xl mb-1"></i>
                     <span class="text-[9px] font-medium">รายการ</span>
                 </button>
-                
-                <!-- Floating Add Button -->
-                <div class="flex-shrink-0 w-16 flex justify-center relative">
-                    <button id="btn-add-mobile" class="absolute -top-6 flex items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/40 border-4 border-white dark:border-slate-900 transition-transform active:scale-90 z-10">
-                        <i class="fa-solid fa-plus text-2xl"></i>
-                    </button>
-                </div>
 
-                <button data-view="history" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-12 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                <button data-view="history" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-14 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                     <i class="fa-solid fa-clock-rotate-left text-xl mb-1"></i>
                     <span class="text-[9px] font-medium">ประวัติ</span>
                 </button>
-                <button data-view="calendar" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-12 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                <button data-view="analytics" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-14 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                    <i class="fa-solid fa-chart-line text-xl mb-1"></i>
+                    <span class="text-[9px] font-medium">สถิติ</span>
+                </button>
+                <button data-view="calendar" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-14 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                     <i class="fa-solid fa-calendar-days text-xl mb-1"></i>
                     <span class="text-[9px] font-medium">ปฏิทิน</span>
                 </button>
             </div>
         </nav>
     </div>
+
+    <!-- Mobile Add FAB -->
+    <button id="btn-add-mobile" class="lg:hidden fixed bottom-24 right-6 flex items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/40 border-4 border-slate-50 dark:border-slate-950 transition-transform active:scale-95 z-40" title="เพิ่มรายการ">
+        <i class="fa-solid fa-plus text-2xl"></i>
+    </button>
 
     <!-- Desktop Add FAB (Hidden on Mobile) -->
     <button id="btn-add-desktop" class="hidden fixed bottom-8 right-8 items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/40 transition-transform hover:scale-105 active:scale-95 z-40" title="เพิ่มรายการ">
@@ -961,10 +1058,12 @@
                         <img id="profile-modal-img" src="" class="hidden w-full h-full object-cover">
                         <span id="profile-modal-initial" class="text-4xl text-indigo-600 dark:text-indigo-400 font-bold">U</span>
                     </div>
-                    <h4 id="profile-modal-name" class="text-lg font-bold text-slate-800 dark:text-white">User</h4>
+                    <div class="flex items-center">
+                        <h4 id="profile-modal-name" class="text-lg font-bold text-slate-800 dark:text-white">User</h4>
+                        <span id="role-badge-modal" class="hidden"></span>
+                    </div>
                     <p id="profile-modal-email" class="text-sm text-slate-500 dark:text-slate-400">email@example.com</p>
                 </div>
-
 
                 <form id="form-profile" class="space-y-4 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <div>
@@ -991,6 +1090,45 @@
                 </form>
             </div>
         </div>
+
+    <!-- Modal: Premium Purchase Simulation -->
+    <div id="modal-premium-purchase" class="fixed inset-x-0 bottom-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 bg-white dark:bg-slate-900 rounded-t-3xl lg:rounded-3xl shadow-2xl z-[80] w-full lg:max-w-md transform translate-y-full lg:translate-y-4 lg:scale-95 lg:opacity-0 transition-all duration-300 max-h-[90vh] flex flex-col hidden">
+        <div class="p-6 overflow-y-auto">
+            <div class="flex justify-between items-center mb-5">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-amber-500">Lifetime Access</p>
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white">Premium แบบชำระครั้งเดียว</h3>
+                </div>
+                <button id="btn-close-premium-purchase" type="button" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors" aria-label="ปิด">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="text-center bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/40 rounded-2xl p-5 mb-5">
+                <div class="text-4xl font-black text-amber-600 dark:text-amber-400">99 บาท</div>
+                <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">ชำระครั้งเดียว ใช้งาน Premium ตลอดชีพ</p>
+            </div>
+
+            <ul class="space-y-3 text-sm text-slate-700 dark:text-slate-300 mb-5">
+                <li class="flex items-center gap-3"><i class="fa-solid fa-circle-check text-emerald-500"></i>Export ข้อมูลเป็น CSV</li>
+                <li class="flex items-center gap-3"><i class="fa-solid fa-circle-check text-emerald-500"></i>Split Bill</li>
+                <li class="flex items-center gap-3"><i class="fa-solid fa-circle-check text-emerald-500"></i>สร้าง PromptPay QR</li>
+            </ul>
+
+            <div class="flex flex-col items-center mb-5">
+                <div id="premium-demo-qrcode" class="bg-white p-3 rounded-xl shadow-sm"></div>
+                <p id="premium-demo-reference" class="mt-2 text-[10px] text-slate-400 text-center break-all"></p>
+            </div>
+
+            <div class="bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/40 rounded-xl p-3 mb-5 text-xs text-rose-700 dark:text-rose-300 text-center font-semibold">
+                ระบบชำระเงินจำลอง ไม่มีการหักเงินจริง
+            </div>
+
+            <button id="btn-confirm-premium-purchase" type="button" class="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold shadow-md transition-all active:scale-[0.98]">
+                ยืนยันการชำระเงินจำลอง
+            </button>
+        </div>
+    </div>
 
     <!-- Modal: Notifications -->
     <div id="modal-noti" class="fixed inset-x-0 bottom-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 bg-white dark:bg-slate-900 rounded-t-3xl lg:rounded-3xl shadow-2xl z-[70] w-full lg:max-w-md transform translate-y-full lg:translate-y-4 lg:scale-95 lg:opacity-0 transition-all duration-300 max-h-[80vh] flex flex-col hidden">

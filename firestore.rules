@@ -3,28 +3,135 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /subscriptions/{subscriptionId} {
-      // Allow read/write only if the user is authenticated and their uid matches the document's userId
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      // Allow create only if the userId being assigned matches the authenticated user's uid
+      allow read: if signedIn() && (request.auth.uid == resource.data.userId || isSupport());
+      allow delete: if signedIn() && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null 
+                    && request.auth.uid == resource.data.userId 
+                    && request.resource.data.userId == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
     
+    function signedIn() { return request.auth != null; }
+    function requesterRole() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user'); }
+    function isAdmin() { return signedIn() && requesterRole() == 'admin'; }
+    function isStaff() { return signedIn() && requesterRole() == 'staff'; }
+    function isSupport() { return isStaff() || isAdmin(); }
+    function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
+
+    function isValidAdminRoleTransition(targetUserId) {
+      let oldRole = resource.data.get('role', 'user');
+      let newRole = request.resource.data.get('role', 'user');
+      let oldPlan = resource.data.get('plan', oldRole == 'premium' ? 'premium' : 'free');
+      let newPlan = request.resource.data.get('plan', 'free');
+      return request.auth.uid != targetUserId
+             && oldRole != 'admin'
+             && (oldRole == 'user' || oldRole == 'staff' || oldRole == 'premium')
+             && (newRole == 'user' || newRole == 'staff')
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'plan'])
+             && ((oldRole == 'premium' && newPlan == 'premium')
+                 || (oldRole != 'premium' && newPlan == oldPlan));
+    }
+
+    function isValidLegacyPremiumMigration(targetUserId) {
+      return isOwner(targetUserId)
+             && resource.data.get('role', 'user') == 'premium'
+             && request.resource.data.get('role', 'user') == 'user'
+             && request.resource.data.get('plan', 'free') == 'premium'
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'plan']);
+    }
+
+    function isValidSelfPremiumUpgrade(targetUserId) {
+      let purchasePath = /databases/$(database)/documents/premium_purchases/$(targetUserId);
+      let purchaseAfter = getAfter(purchasePath).data;
+      let role = resource.data.get('role', 'user');
+      return isOwner(targetUserId)
+             && (role == 'user' || role == 'staff')
+             && request.resource.data.get('role', 'user') == role
+             && resource.data.get('plan', 'free') == 'free'
+             && request.resource.data.get('plan', 'free') == 'premium'
+             && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['plan', 'premiumPlan', 'premiumSince'])
+             && request.resource.data.premiumPlan == 'lifetime'
+             && request.resource.data.premiumSince == request.time
+             && !exists(purchasePath)
+             && purchaseAfter.keys().hasOnly(['userId', 'plan', 'amount', 'currency', 'status', 'createdAt'])
+             && purchaseAfter.userId == request.auth.uid
+             && purchaseAfter.plan == 'lifetime'
+             && purchaseAfter.amount == 99
+             && purchaseAfter.currency == 'THB'
+             && purchaseAfter.status == 'approved'
+             && purchaseAfter.createdAt == request.resource.data.premiumSince;
+    }
+
+    function isValidPremiumPurchase(targetUserId) {
+      let userPath = /databases/$(database)/documents/users/$(targetUserId);
+      let userBefore = get(userPath).data;
+      let userAfter = getAfter(userPath).data;
+      let role = userBefore.get('role', 'user');
+      return isOwner(targetUserId)
+             && (role == 'user' || role == 'staff')
+             && userBefore.get('plan', 'free') == 'free'
+             && request.resource.data.keys().hasOnly(['userId', 'plan', 'amount', 'currency', 'status', 'createdAt'])
+             && request.resource.data.userId == request.auth.uid
+             && request.resource.data.plan == 'lifetime'
+             && request.resource.data.amount == 99
+             && request.resource.data.currency == 'THB'
+             && request.resource.data.status == 'approved'
+             && request.resource.data.createdAt == request.time
+             && userAfter.get('role', 'user') == role
+             && userAfter.get('plan', 'free') == 'premium'
+             && userAfter.premiumPlan == 'lifetime'
+             && userAfter.premiumSince == request.resource.data.createdAt;
+    }
+
     // New Schema Rules
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId) || isSupport();
+      allow delete: if signedIn() && (
+                      (isOwner(userId) && (resource.data.get('role', 'user') == 'user' || resource.data.get('role', 'user') == 'premium'))
+                      || (isAdmin() && request.auth.uid != userId && resource.data.get('role', 'user') != 'admin')
+                    );
+      allow create: if isOwner(userId)
+                    && request.resource.data.get('role', 'user') == 'user'
+                    && request.resource.data.get('plan', 'free') == 'free';
+      allow update: if signedIn() && (
+                       (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan']))
+                       || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                       || (isAdmin() && isValidAdminRoleTransition(userId))
+                       || isValidLegacyPremiumMigration(userId)
+                       || isValidSelfPremiumUpgrade(userId)
+                     );
       
       match /subscriptions/{subscriptionId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isOwner(userId) || isSupport();
+        allow delete: if isOwner(userId);
+        allow update: if request.auth != null && request.auth.uid == userId 
+                      && request.resource.data.userId == resource.data.userId;
+        allow create: if request.auth != null && request.auth.uid == userId 
+                      && request.resource.data.userId == userId;
       }
+    }
+
+    match /premium_purchases/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null && isValidPremiumPurchase(userId);
+    }
+
     // Payment History Rules
     match /payment_history/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null 
+                    && request.auth.uid == resource.data.userId 
+                    && request.resource.data.userId == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
     
     // Canceled Subs (Graveyard) Rules
     match /canceled_subs/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null 
+                    && request.auth.uid == resource.data.userId 
+                    && request.resource.data.userId == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
