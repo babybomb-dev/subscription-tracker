@@ -65,6 +65,7 @@ export function renderDonutChart(subs, mode = 'app', exchangeRates = {}) {
         if (sub.cycle === 'yearly') {
             thbPrice = thbPrice / 12;
         }
+        thbPrice += parseFloat(sub.excessCost) || 0;
 
         const key = mode === 'cat' ? sub.category : sub.name;
         if (!dataMap[key]) {

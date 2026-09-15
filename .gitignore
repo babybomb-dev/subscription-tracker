@@ -1,0 +1,26 @@
+# Environment and credentials
+.env
+.env.*
+!.env.example
+
+# Dependencies and tool caches
+node_modules/
+.firebase/
+.cache/
+
+# Logs and temporary files
+*.log
+firebase-debug.log*
+*.tmp
+*.temp
+*.bak
+*~
+/'+match[2])
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Editor-specific files
+.vscode/
+.idea/

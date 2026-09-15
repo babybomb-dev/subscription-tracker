@@ -13,7 +13,7 @@ export function initNotifications() {
         return;
     }
     
-    if (Notification.permission === 'granted') {
+    if (window.Notification.permission === 'granted') {
         permissionGranted = true;
     }
     
@@ -24,7 +24,7 @@ export function initNotifications() {
 export async function requestNotificationPermission() {
     if (!('Notification' in window)) return false;
     
-    const permission = await Notification.requestPermission();
+    const permission = await window.Notification.requestPermission();
     if (permission === 'granted') {
         permissionGranted = true;
         updateNotificationUI();
@@ -54,6 +54,8 @@ export function checkUpcomingNotifications(subs, exchangeRates = {}) {
     
     let html = '';
     let alertCount = 0;
+    const savedLeadDays = Number.parseInt(localStorage.getItem('subtracker_noti_days') || '3', 10);
+    const notificationLeadDays = [1, 3, 7].includes(savedLeadDays) ? savedLeadDays : 3;
     
     const notifiedLogs = JSON.parse(localStorage.getItem('notifiedLogs') || '{}');
     const today = new Date().toDateString();
@@ -66,8 +68,7 @@ export function checkUpcomingNotifications(subs, exchangeRates = {}) {
         const nextDate = calculateNextBillingDate(sub.date, sub.cycle);
         const daysUntil = getDaysUntil(nextDate);
         
-        // Threshold: 3 days for normal, 1 day for free trial (but show 3 days anyway)
-        if (daysUntil !== null && daysUntil <= 3 && daysUntil >= 0) {
+        if (daysUntil !== null && daysUntil <= notificationLeadDays && daysUntil >= 0) {
             alertCount++;
             let currencyDisplay = sub.currency || 'THB';
             let thbPrice = parseFloat(sub.price);
@@ -110,12 +111,12 @@ export function checkUpcomingNotifications(subs, exchangeRates = {}) {
             </div>`;
             
             // Browser Notification if granted and not notified yet
-            if (permissionGranted) {
+            if (permissionGranted && 'Notification' in window) {
                 const notiKey = `${sub.id}_${nextDate.toISOString().slice(0, 10)}`;
                 if (!notifiedLogs[notiKey]) {
-                    const notification = new Notification(title, {
+                    const notification = new window.Notification(title, {
                         body: body,
-                        icon: '/favicon.ico',
+                        icon: './icon.svg',
                         tag: notiKey
                     });
                     notification.onclick = function() { window.focus(); this.close(); };

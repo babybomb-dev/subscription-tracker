@@ -37,7 +37,8 @@ function renderAchievements() {
     });
     
     const formatCurrency = (val) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(val);
-    document.getElementById('achievements-total-saved').textContent = formatCurrency(totalSavedYearly);
+    // ผู้ใช้แจ้งว่านำ Element นี้ออกไปแล้ว จึงทำการคอมเมนต์ไว้เพื่อไม่ให้เกิด Error
+    // document.getElementById('achievements-total-saved').textContent = formatCurrency(totalSavedYearly);
     
     // 2. Render Badges
     renderBadges(currentCanceledSubs.length, totalSavedYearly);

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtracker-v5';
+const CACHE_NAME = 'subtracker-v24';
 const urlsToCache = [
   './',
   './index.html',
@@ -8,19 +8,19 @@ const urlsToCache = [
   './style.css',
   './js/main.js',
   './js/components/ui.js',
+  './js/components/history.js',
   './js/components/calendar.js',
   './js/components/chart.js',
+  './js/components/analytics.js',
   './js/components/notifications.js',
   './js/components/settings.js',
   './js/components/splitBill.js',
-  './js/components/achievements.js',
   './js/services/auth.js',
   './js/services/database.js',
   './js/utils/helpers.js',
   './js/utils/access.js',
+  './js/utils/presets.js',
   './js/pwa.js',
-  './js/export.js',
-  './js/promptpay.js'
 ];
 
 self.addEventListener('install', event => {

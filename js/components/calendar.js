@@ -136,7 +136,7 @@ export function renderFullCalendar(subs, date = null) {
     });
 
     let html = `
-        <div class="grid grid-cols-7 gap-2 sm:gap-4 w-full">
+        <div class="grid grid-cols-7 gap-2 w-full">
             <!-- Days header -->
             ${['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสฯ', 'ศุกร์', 'เสาร์'].map(day => `
                 <div class="text-center text-xs sm:text-sm font-bold text-slate-500 py-2">${day}</div>
@@ -144,7 +144,7 @@ export function renderFullCalendar(subs, date = null) {
     `;
 
     for (let i = 0; i < firstDay; i++) {
-        html += `<div class="p-2 min-h-[100px] sm:min-h-[120px] rounded-2xl bg-transparent"></div>`;
+        html += `<div class="p-1 sm:p-2 min-h-[80px] sm:min-h-[90px] rounded-2xl bg-transparent"></div>`;
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -155,7 +155,7 @@ export function renderFullCalendar(subs, date = null) {
             dayItemsHTML = subsByDay[day].map(sub => {
                 return `
                     <div class="flex items-center gap-1.5 p-1.5 mb-1 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 text-xs truncate">
-                        <div class="w-4 h-4 rounded flex items-center justify-center shrink-0 bg-slate-100 dark:bg-slate-700 text-[10px] text-slate-500"><i class="${getCategoryIcon(sub.category)}"></i></div>
+                        <div class="w-4 h-4 rounded flex items-center justify-center shrink-0 bg-slate-100 dark:bg-slate-700 text-[10px] text-slate-500">${getCategoryIcon(sub.category)}</div>
                         <span class="truncate font-medium text-slate-700 dark:text-slate-300">${sub.name}</span>
                     </div>
                 `;
@@ -163,8 +163,8 @@ export function renderFullCalendar(subs, date = null) {
         }
 
         html += `
-            <div class="flex flex-col p-2 min-h-[100px] sm:min-h-[120px] rounded-2xl border ${isToday ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50'} transition-all hover:shadow-md">
-                <span class="text-sm font-bold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'} mb-2 ${isToday ? 'bg-white dark:bg-indigo-900 rounded-full w-7 h-7 flex items-center justify-center shadow-sm' : ''}">${day}</span>
+            <div class="flex flex-col p-1.5 sm:p-2 min-h-[80px] sm:min-h-[90px] rounded-2xl border ${isToday ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50'} transition-all hover:shadow-md">
+                <span class="text-sm font-bold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'} mb-1.5 ${isToday ? 'bg-white dark:bg-indigo-900 rounded-full w-7 h-7 flex items-center justify-center shadow-sm' : ''}">${day}</span>
                 <div class="flex-1 overflow-y-auto hide-scrollbar space-y-1">
                     ${dayItemsHTML}
                 </div>

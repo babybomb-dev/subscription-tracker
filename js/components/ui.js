@@ -22,7 +22,7 @@ export function initTheme() {
         }
     });
 
-    const toggleBtns = [document.getElementById('btn-theme-mobile'), document.getElementById('btn-theme-desktop')];
+    const toggleBtns = [document.getElementById('btn-theme-mobile'), document.getElementById('btn-theme-desktop'), document.getElementById('btn-staff-theme-mobile')];
     toggleBtns.forEach(btn => {
         if (btn) {
             btn.addEventListener('click', () => {
@@ -55,7 +55,7 @@ function applyTheme(themeSetting) {
     }
 
     // Update icons
-    const toggleBtns = [document.getElementById('btn-theme-mobile'), document.getElementById('btn-theme-desktop')];
+    const toggleBtns = [document.getElementById('btn-theme-mobile'), document.getElementById('btn-theme-desktop'), document.getElementById('btn-staff-theme-mobile')];
     toggleBtns.forEach(btn => {
         if (btn) {
             const icon = btn.querySelector('i');
@@ -78,7 +78,9 @@ function applyTheme(themeSetting) {
 
 // --- Navigation Management ---
 export function switchView(viewId) {
-    const views = ['dashboard', 'list', 'history', 'analytics', 'calendar', 'achievements', 'settings', 'staff', 'admin'];
+    const views = ['dashboard', 'list', 'history', 'analytics', 'calendar', 'settings',
+        'staff-overview', 'staff-users', 'staff-subscriptions', 'staff-premium', 'staff-reports', 'staff-settings',
+        'admin-overview', 'admin-users', 'admin-subscriptions', 'admin-premium', 'admin-reports', 'admin-settings'];
     views.forEach(v => {
         const el = document.getElementById(`view-${v}`);
         if (el) el.classList.add('hidden');

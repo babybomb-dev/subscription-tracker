@@ -12,37 +12,54 @@ export function formatMoney(amount, currency = 'THB') {
     return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Calculate next billing date based on start date and cycle
-export function calculateNextBillingDate(startDateStr, cycle) {
+function parseCalendarDate(value) {
+    if (value instanceof Date) {
+        if (Number.isNaN(value.getTime())) return null;
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    const dateOnlyMatch = typeof value === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch.map(Number);
+        const parsed = new Date(year, month - 1, day);
+        if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return null;
+        return parsed;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+function createClampedDate(year, month, intendedDay) {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(intendedDay, lastDay));
+}
+
+// Calculate the current or next billing date using calendar-day comparisons.
+export function calculateNextBillingDate(startDateStr, cycle, referenceDate = new Date()) {
     if (!startDateStr) return null;
-    const start = new Date(startDateStr);
-    const now = new Date();
-    let nextDate = new Date(start);
+    const start = parseCalendarDate(startDateStr);
+    const today = parseCalendarDate(referenceDate);
+    if (!start || !today) return null;
 
     // If start date is in the future, that is the next billing date
-    if (start > now) {
+    if (start > today) {
         return start;
     }
 
     if (cycle === 'monthly') {
-        // Calculate months diff
-        const monthsDiff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-        nextDate.setMonth(start.getMonth() + monthsDiff);
-        
-        // If the date in this month has passed, go to next month
-        if (nextDate < now) {
-            nextDate.setMonth(nextDate.getMonth() + 1);
-        }
+        const monthsDiff = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
+        let nextDate = createClampedDate(start.getFullYear(), start.getMonth() + monthsDiff, start.getDate());
+        if (nextDate < today) nextDate = createClampedDate(start.getFullYear(), start.getMonth() + monthsDiff + 1, start.getDate());
+        return nextDate;
     } else if (cycle === 'yearly') {
-        const yearsDiff = now.getFullYear() - start.getFullYear();
-        nextDate.setFullYear(start.getFullYear() + yearsDiff);
-        
-        if (nextDate < now) {
-            nextDate.setFullYear(nextDate.getFullYear() + 1);
-        }
+        let nextDate = createClampedDate(today.getFullYear(), start.getMonth(), start.getDate());
+        if (nextDate < today) nextDate = createClampedDate(today.getFullYear() + 1, start.getMonth(), start.getDate());
+        return nextDate;
     }
-    
-    return nextDate;
+
+    return start;
 }
 
 // Calculate days until a date

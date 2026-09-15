@@ -4,11 +4,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /subscriptions/{subscriptionId} {
       allow read: if signedIn() && (request.auth.uid == resource.data.userId || isSupport());
-      allow delete: if signedIn() && request.auth.uid == resource.data.userId;
+      allow delete: if signedIn() && !isStaff() && request.auth.uid == resource.data.userId;
       allow update: if request.auth != null 
+                    && !isStaff()
                     && request.auth.uid == resource.data.userId 
                     && request.resource.data.userId == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null
+                    && !isStaff()
+                    && request.auth.uid == request.resource.data.userId;
     }
     
     function signedIn() { return request.auth != null; }
@@ -17,6 +20,19 @@ service cloud.firestore {
     function isStaff() { return signedIn() && requesterRole() == 'staff'; }
     function isSupport() { return isStaff() || isAdmin(); }
     function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
+
+    function isValidStaffEmailSync(targetUserId) {
+      let oldEmail = resource.data.get('email', null);
+      let authEmail = request.auth.token.get('email', null);
+      return isOwner(targetUserId)
+             && resource.data.get('role', 'user') == 'staff'
+             && request.resource.data.get('role', 'user') == 'staff'
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email'])
+             && (oldEmail == null || (oldEmail is string && oldEmail.matches('^\\s*$')))
+             && authEmail is string
+             && authEmail.matches('.*[^\\s].*')
+             && request.resource.data.get('email', null) == authEmail;
+    }
 
     function isValidAdminRoleTransition(targetUserId) {
       let oldRole = resource.data.get('role', 'user');
@@ -37,7 +53,27 @@ service cloud.firestore {
              && resource.data.get('role', 'user') == 'premium'
              && request.resource.data.get('role', 'user') == 'user'
              && request.resource.data.get('plan', 'free') == 'premium'
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'plan']);
+             && request.resource.data.premiumPlan == 'lifetime'
+             && request.resource.data.premiumUntil == null
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'plan', 'premiumPlan', 'premiumUntil']);
+    }
+
+    function isValidPremiumPrice(plan, amount) {
+      return (plan == 'monthly' && amount == 29)
+             || (plan == 'yearly' && amount == 199)
+             || (plan == 'lifetime' && amount == 299);
+    }
+
+    function isValidPremiumDuration(plan, premiumUntil) {
+      return (plan == 'lifetime' && premiumUntil == null)
+             || (plan == 'monthly'
+                 && premiumUntil is timestamp
+                 && premiumUntil >= request.time + duration.value(27, 'd')
+                 && premiumUntil <= request.time + duration.value(32, 'd'))
+             || (plan == 'yearly'
+                 && premiumUntil is timestamp
+                 && premiumUntil >= request.time + duration.value(364, 'd')
+                 && premiumUntil <= request.time + duration.value(367, 'd'));
     }
 
     function isValidSelfPremiumUpgrade(targetUserId) {
@@ -45,22 +81,24 @@ service cloud.firestore {
       let purchaseAfter = getAfter(purchasePath).data;
       let role = resource.data.get('role', 'user');
       return isOwner(targetUserId)
-             && (role == 'user' || role == 'staff')
+             && role == 'user'
              && request.resource.data.get('role', 'user') == role
-             && resource.data.get('plan', 'free') == 'free'
              && request.resource.data.get('plan', 'free') == 'premium'
              && request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['plan', 'premiumPlan', 'premiumSince'])
-             && request.resource.data.premiumPlan == 'lifetime'
+                  .hasOnly(['plan', 'premiumPlan', 'premiumSince', 'premiumUntil'])
+             && (request.resource.data.premiumPlan == 'monthly'
+                 || request.resource.data.premiumPlan == 'yearly'
+                 || request.resource.data.premiumPlan == 'lifetime')
              && request.resource.data.premiumSince == request.time
-             && !exists(purchasePath)
-             && purchaseAfter.keys().hasOnly(['userId', 'plan', 'amount', 'currency', 'status', 'createdAt'])
+             && isValidPremiumDuration(request.resource.data.premiumPlan, request.resource.data.premiumUntil)
+             && purchaseAfter.keys().hasOnly(['userId', 'plan', 'amount', 'currency', 'status', 'createdAt', 'premiumUntil'])
              && purchaseAfter.userId == request.auth.uid
-             && purchaseAfter.plan == 'lifetime'
-             && purchaseAfter.amount == 99
+             && purchaseAfter.plan == request.resource.data.premiumPlan
+             && isValidPremiumPrice(purchaseAfter.plan, purchaseAfter.amount)
              && purchaseAfter.currency == 'THB'
              && purchaseAfter.status == 'approved'
-             && purchaseAfter.createdAt == request.resource.data.premiumSince;
+             && purchaseAfter.createdAt == request.resource.data.premiumSince
+             && purchaseAfter.premiumUntil == request.resource.data.premiumUntil;
     }
 
     function isValidPremiumPurchase(targetUserId) {
@@ -69,19 +107,93 @@ service cloud.firestore {
       let userAfter = getAfter(userPath).data;
       let role = userBefore.get('role', 'user');
       return isOwner(targetUserId)
-             && (role == 'user' || role == 'staff')
-             && userBefore.get('plan', 'free') == 'free'
-             && request.resource.data.keys().hasOnly(['userId', 'plan', 'amount', 'currency', 'status', 'createdAt'])
+             && role == 'user'
+             && request.resource.data.keys().hasOnly(['userId', 'plan', 'amount', 'currency', 'status', 'createdAt', 'premiumUntil'])
              && request.resource.data.userId == request.auth.uid
-             && request.resource.data.plan == 'lifetime'
-             && request.resource.data.amount == 99
+             && (request.resource.data.plan == 'monthly'
+                 || request.resource.data.plan == 'yearly'
+                 || request.resource.data.plan == 'lifetime')
+             && isValidPremiumPrice(request.resource.data.plan, request.resource.data.amount)
+             && isValidPremiumDuration(request.resource.data.plan, request.resource.data.premiumUntil)
              && request.resource.data.currency == 'THB'
              && request.resource.data.status == 'approved'
              && request.resource.data.createdAt == request.time
              && userAfter.get('role', 'user') == role
              && userAfter.get('plan', 'free') == 'premium'
-             && userAfter.premiumPlan == 'lifetime'
-             && userAfter.premiumSince == request.resource.data.createdAt;
+             && userAfter.premiumPlan == request.resource.data.plan
+             && userAfter.premiumSince == request.resource.data.createdAt
+             && userAfter.premiumUntil == request.resource.data.premiumUntil;
+    }
+
+    function isValidAdminPremiumState(data) {
+      return (data.get('plan', 'free') == 'free'
+              && data.premiumPlan == null
+              && data.premiumSince == null
+              && data.premiumUntil == null)
+             || (data.get('plan', 'free') == 'premium'
+                 && (data.premiumPlan == 'monthly' || data.premiumPlan == 'yearly' || data.premiumPlan == 'lifetime')
+                 && data.premiumSince == request.time
+                 && ((data.premiumPlan == 'lifetime' && data.premiumUntil == null)
+                     || ((data.premiumPlan == 'monthly' || data.premiumPlan == 'yearly') && data.premiumUntil is timestamp)));
+    }
+
+    function isValidAdminPremiumOverride(targetUserId) {
+      let auditId = request.resource.data.lastPremiumAuditId;
+      let auditPath = /databases/$(database)/documents/admin_audit_logs/$(auditId);
+      let auditAfter = getAfter(auditPath).data;
+      let oldRole = resource.data.get('role', 'user');
+      let oldPlan = resource.data.get('plan', oldRole == 'premium' ? 'premium' : 'free');
+      return isAdmin()
+             && request.auth.uid != targetUserId
+             && oldRole != 'admin'
+             && request.resource.data.get('role', 'user') == oldRole
+             && auditId is string
+             && auditId.size() > 0
+             && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['plan', 'premiumPlan', 'premiumSince', 'premiumUntil', 'lastPremiumAuditId'])
+             && isValidAdminPremiumState(request.resource.data)
+             && auditAfter.action == 'premium_override'
+             && auditAfter.targetUserId == targetUserId
+             && auditAfter.adminUserId == request.auth.uid
+             && auditAfter.previousPlan == oldPlan
+             && auditAfter.previousPremiumPlan == resource.data.get('premiumPlan', null)
+             && auditAfter.previousPremiumUntil == resource.data.get('premiumUntil', null)
+             && auditAfter.newPlan == request.resource.data.plan
+             && auditAfter.newPremiumPlan == request.resource.data.premiumPlan
+             && auditAfter.newPremiumUntil == request.resource.data.premiumUntil
+             && auditAfter.createdAt == request.time;
+    }
+
+    function isValidPremiumAuditLog(auditId) {
+      let targetUserId = request.resource.data.targetUserId;
+      let userPath = /databases/$(database)/documents/users/$(targetUserId);
+      let userBefore = get(userPath).data;
+      let userAfter = getAfter(userPath).data;
+      let oldRole = userBefore.get('role', 'user');
+      let oldPlan = userBefore.get('plan', oldRole == 'premium' ? 'premium' : 'free');
+      return isAdmin()
+             && request.auth.uid != targetUserId
+             && oldRole != 'admin'
+             && request.resource.data.keys().hasOnly([
+                  'action', 'targetUserId', 'adminUserId', 'previousPlan', 'previousPremiumPlan',
+                  'previousPremiumUntil', 'newPlan', 'newPremiumPlan', 'newPremiumUntil', 'reason', 'createdAt'
+                ])
+             && request.resource.data.action == 'premium_override'
+             && request.resource.data.targetUserId is string
+             && request.resource.data.targetUserId.size() > 0
+             && request.resource.data.adminUserId == request.auth.uid
+             && request.resource.data.previousPlan == oldPlan
+             && request.resource.data.previousPremiumPlan == userBefore.get('premiumPlan', null)
+             && request.resource.data.previousPremiumUntil == userBefore.get('premiumUntil', null)
+             && request.resource.data.newPlan == userAfter.plan
+             && request.resource.data.newPremiumPlan == userAfter.premiumPlan
+             && request.resource.data.newPremiumUntil == userAfter.premiumUntil
+             && request.resource.data.reason is string
+             && request.resource.data.reason.size() > 0
+             && request.resource.data.reason.size() <= 500
+             && request.resource.data.reason.matches('.*[^\\s].*')
+             && request.resource.data.createdAt == request.time
+             && userAfter.lastPremiumAuditId == auditId;
     }
 
     // New Schema Rules
@@ -93,46 +205,61 @@ service cloud.firestore {
                     );
       allow create: if isOwner(userId)
                     && request.resource.data.get('role', 'user') == 'user'
-                    && request.resource.data.get('plan', 'free') == 'free';
+                    && request.resource.data.get('plan', 'free') == 'free'
+                    && request.resource.data.createdAt == request.time;
       allow update: if signedIn() && (
-                       (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan']))
-                       || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                       (isOwner(userId)
+                        && resource.data.get('role', 'user') != 'staff'
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'premiumPlan', 'premiumSince', 'premiumUntil', 'lastPremiumAuditId']))
+                       || isValidStaffEmailSync(userId)
+                       || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'premiumPlan', 'premiumSince', 'premiumUntil', 'lastPremiumAuditId']))
                        || (isAdmin() && isValidAdminRoleTransition(userId))
+                       || isValidAdminPremiumOverride(userId)
                        || isValidLegacyPremiumMigration(userId)
                        || isValidSelfPremiumUpgrade(userId)
                      );
       
       match /subscriptions/{subscriptionId} {
         allow read: if isOwner(userId) || isSupport();
-        allow delete: if isOwner(userId);
-        allow update: if request.auth != null && request.auth.uid == userId 
+        allow delete: if isOwner(userId) && !isStaff();
+        allow update: if request.auth != null && !isStaff() && request.auth.uid == userId 
                       && request.resource.data.userId == resource.data.userId;
-        allow create: if request.auth != null && request.auth.uid == userId 
+        allow create: if request.auth != null && !isStaff() && request.auth.uid == userId 
                       && request.resource.data.userId == userId;
       }
     }
 
     match /premium_purchases/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow create: if request.auth != null && isValidPremiumPurchase(userId);
+      allow create, update: if request.auth != null && isValidPremiumPurchase(userId);
+    }
+
+    match /admin_audit_logs/{auditId} {
+      allow read: if isAdmin();
+      allow create: if signedIn() && isValidPremiumAuditLog(auditId);
+      allow update, delete: if false;
     }
 
     // Payment History Rules
     match /payment_history/{docId} {
-      allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && !isStaff() && request.auth.uid == resource.data.userId;
       allow update: if request.auth != null 
+                    && !isStaff()
                     && request.auth.uid == resource.data.userId 
                     && request.resource.data.userId == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null && !isStaff() && request.auth.uid == request.resource.data.userId;
     }
     
     // Canceled Subs (Graveyard) Rules
     match /canceled_subs/{docId} {
-      allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && !isStaff() && request.auth.uid == resource.data.userId;
       allow update: if request.auth != null 
+                    && !isStaff()
                     && request.auth.uid == resource.data.userId 
                     && request.resource.data.userId == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null && !isStaff() && request.auth.uid == request.resource.data.userId;
     }
   }
 }

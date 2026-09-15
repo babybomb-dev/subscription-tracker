@@ -1,3 +1,5 @@
+import { getCategoryIcon } from '../utils/helpers.js';
+
 export function renderAnalyticsChart(subs, exchangeRates) {
     const ctxTrend = document.getElementById('analytics-chart');
     const ctxBar = document.getElementById('analytics-bar-chart');
@@ -36,15 +38,17 @@ export function renderAnalyticsChart(subs, exchangeRates) {
         if (sub.cycle === 'yearly') {
             thbPrice = thbPrice / 12;
         }
-        baseMonthlyCost += thbPrice;
+        const excessCost = parseFloat(sub.excessCost) || 0;
+        const currentMonthCost = thbPrice + excessCost;
+        baseMonthlyCost += currentMonthCost;
         
-        if (thbPrice > maxSubPrice) {
-            maxSubPrice = thbPrice;
+        if (currentMonthCost > maxSubPrice) {
+            maxSubPrice = currentMonthCost;
             maxSub = sub;
         }
         
         const cat = sub.category || 'other';
-        categoryTotals[cat] = (categoryTotals[cat] || 0) + thbPrice;
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + currentMonthCost;
     });
 
     // Update Quick Stats
@@ -203,6 +207,7 @@ export function openYearInReview(subs, exchangeRates) {
             yearlyPrice = thbPrice * 52;
         }
 
+        yearlyPrice += parseFloat(sub.excessCost) || 0;
         totalYearly += yearlyPrice;
 
         if (yearlyPrice > maxSubPrice) {
@@ -220,15 +225,15 @@ export function openYearInReview(subs, exchangeRates) {
     document.getElementById('yir-active-count').textContent = activeCount;
     document.getElementById('yir-paused-count').textContent = pausedCount;
     
+    const topIcon = document.getElementById('yir-top-icon');
     if (maxSub) {
         document.getElementById('yir-top-name').textContent = maxSub.name;
         document.getElementById('yir-top-price').textContent = `${formatCurrency(maxSubPrice)} / ปี`;
-        import('../utils/helpers.js').then(module => {
-            document.getElementById('yir-top-icon').className = module.getCategoryIcon(maxSub.category);
-        });
+        if (topIcon) topIcon.innerHTML = getCategoryIcon(maxSub.category);
     } else {
         document.getElementById('yir-top-name').textContent = 'ไม่มีข้อมูล';
         document.getElementById('yir-top-price').textContent = '0.00 THB';
+        if (topIcon) topIcon.innerHTML = '<i class="fa-solid fa-star"></i>';
     }
 
     // Show modal
