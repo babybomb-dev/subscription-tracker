@@ -73,6 +73,41 @@ service cloud.firestore {
              && request.resource.data.resolvedAt == null;
     }
 
+    function isValidInitialUserSupportNote(caseId) {
+      let notePath = /databases/$(database)/documents/support_cases/$(caseId)/notes/initial;
+      let note = getAfter(notePath);
+      return note != null
+             && note.data.keys().hasOnly(['authorId', 'authorRole', 'message', 'createdAt'])
+             && note.data.authorId == request.auth.uid
+             && note.data.authorRole == 'user'
+             && note.data.message is string
+             && note.data.message.size() > 0
+             && note.data.message.size() <= 2000
+             && note.data.message.matches('.*[^\\s].*')
+             && note.data.createdAt == request.time;
+    }
+
+    function isValidUserSupportCaseCreate(caseId) {
+      return signedIn()
+             && (requesterRole() == 'user' || requesterRole() == 'premium')
+             && request.resource.data.keys().hasOnly([
+                  'userId', 'subject', 'category', 'status', 'priority', 'createdBy',
+                  'createdByRole', 'assignedTo', 'createdAt', 'updatedAt', 'resolvedAt'
+                ])
+             && request.resource.data.userId == request.auth.uid
+             && request.resource.data.createdBy == request.auth.uid
+             && request.resource.data.createdByRole == 'user'
+             && isValidSupportSubject(request.resource.data.subject)
+             && isValidSupportCategory(request.resource.data.category)
+             && request.resource.data.status == 'open'
+             && request.resource.data.priority == 'normal'
+             && request.resource.data.assignedTo == null
+             && request.resource.data.createdAt == request.time
+             && request.resource.data.updatedAt == request.time
+             && request.resource.data.resolvedAt == null
+             && isValidInitialUserSupportNote(caseId);
+    }
+
     function isValidSupportWorkflowValues() {
       let statusChanged = request.resource.data.status != resource.data.status;
       return request.resource.data.diff(resource.data).affectedKeys()
@@ -95,13 +130,15 @@ service cloud.firestore {
       let newAssignee = request.resource.data.assignedTo;
       return isStaff()
              && isValidSupportWorkflowValues()
-             && oldStatus != 'resolved'
-             && ((oldStatus == 'open' && (newStatus == 'open' || newStatus == 'in_progress'))
-                 || (oldStatus == 'in_progress' && (newStatus == 'in_progress' || newStatus == 'resolved')))
-             && ((oldAssignee == null && (newAssignee == null || newAssignee == request.auth.uid))
-                 || (oldAssignee != null && newAssignee == oldAssignee))
-             && (newStatus != 'in_progress' || newAssignee == request.auth.uid)
-             && (newStatus != 'resolved' || oldAssignee == request.auth.uid);
+             && request.resource.data.priority == resource.data.priority
+             && ((oldStatus == 'open'
+                  && newStatus == 'in_progress'
+                  && (oldAssignee == null || oldAssignee == request.auth.uid)
+                  && newAssignee == request.auth.uid)
+                 || (oldStatus == 'in_progress'
+                     && newStatus == 'resolved'
+                     && oldAssignee == request.auth.uid
+                     && newAssignee == oldAssignee));
     }
 
     function isValidAdminSupportCaseUpdate() {
@@ -110,10 +147,31 @@ service cloud.firestore {
 
     function isValidSupportNoteCreate(parentCaseId) {
       return isSupport()
-             && exists(/databases/$(database)/documents/support_cases/$(parentCaseId))
+             && existsAfter(/databases/$(database)/documents/support_cases/$(parentCaseId))
              && request.resource.data.keys().hasOnly(['authorId', 'authorRole', 'message', 'createdAt'])
              && request.resource.data.authorId == request.auth.uid
              && request.resource.data.authorRole == requesterRole()
+             && request.resource.data.message is string
+             && request.resource.data.message.size() > 0
+             && request.resource.data.message.size() <= 2000
+             && request.resource.data.message.matches('.*[^\\s].*')
+             && request.resource.data.createdAt == request.time;
+    }
+
+    function isValidUserSupportDescriptionCreate(parentCaseId, noteId) {
+      let parent = getAfter(/databases/$(database)/documents/support_cases/$(parentCaseId));
+      return signedIn()
+             && (requesterRole() == 'user' || requesterRole() == 'premium')
+             && noteId == 'initial'
+             && parent != null
+             && parent.data.userId == request.auth.uid
+             && parent.data.createdBy == request.auth.uid
+             && parent.data.createdByRole == 'user'
+             && parent.data.status == 'open'
+             && parent.data.createdAt == request.time
+             && request.resource.data.keys().hasOnly(['authorId', 'authorRole', 'message', 'createdAt'])
+             && request.resource.data.authorId == request.auth.uid
+             && request.resource.data.authorRole == 'user'
              && request.resource.data.message is string
              && request.resource.data.message.size() > 0
              && request.resource.data.message.size() <= 2000
@@ -355,14 +413,19 @@ service cloud.firestore {
     }
 
     match /support_cases/{caseId} {
-      allow read: if isSupport();
-      allow create: if isValidSupportCaseCreate();
+      allow read: if isSupport() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidSupportCaseCreate() || isValidUserSupportCaseCreate(caseId);
       allow update: if isValidStaffSupportCaseUpdate() || isValidAdminSupportCaseUpdate();
       allow delete: if false;
 
       match /notes/{noteId} {
-        allow read: if isSupport();
-        allow create: if isValidSupportNoteCreate(caseId);
+        allow read: if isSupport()
+                    || (signedIn()
+                        && noteId == 'initial'
+                        && get(/databases/$(database)/documents/support_cases/$(caseId)).data.userId == request.auth.uid
+                        && resource.data.authorId == request.auth.uid
+                        && resource.data.authorRole == 'user');
+        allow create: if isValidSupportNoteCreate(caseId) || isValidUserSupportDescriptionCreate(caseId, noteId);
         allow update, delete: if false;
       }
     }

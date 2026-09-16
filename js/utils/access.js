@@ -3,7 +3,7 @@ export const VALID_PLANS = Object.freeze(['free', 'premium']);
 export const VALID_PREMIUM_PLANS = Object.freeze(['monthly', 'yearly', 'lifetime']);
 const STAFF_VIEWS = Object.freeze(['staff-overview', 'staff-users', 'staff-subscriptions', 'staff-premium', 'staff-reports', 'staff-settings']);
 const ADMIN_VIEWS = Object.freeze(['admin-overview', 'admin-users', 'admin-subscriptions', 'admin-premium', 'admin-reports', 'admin-settings']);
-const VALID_VIEWS = Object.freeze(['dashboard', 'list', 'history', 'analytics', 'calendar', 'settings', ...STAFF_VIEWS, ...ADMIN_VIEWS]);
+const VALID_VIEWS = Object.freeze(['dashboard', 'list', 'history', 'analytics', 'calendar', 'support', 'settings', ...STAFF_VIEWS, ...ADMIN_VIEWS]);
 
 function cleanIdentityValue(value) {
     return typeof value === 'string' ? value.trim() : '';

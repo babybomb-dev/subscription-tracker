@@ -51,6 +51,14 @@ export function checkUpcomingNotifications(subs, exchangeRates = {}) {
     const notiList = document.getElementById('noti-list');
     const notiBadgeMobile = document.getElementById('btn-noti-mobile');
     const notiBadgeDesktop = document.getElementById('btn-noti-desktop');
+    if (localStorage.getItem('subtracker_noti_enabled') === 'false') {
+        if (notiList) notiList.innerHTML = '<div class="text-center text-slate-500 py-10 text-sm">ปิดการแจ้งเตือนบิลใกล้กำหนดแล้ว</div>';
+        [notiBadgeMobile, notiBadgeDesktop].forEach(btn => {
+            btn?.classList.remove('relative');
+            btn?.querySelectorAll('.noti-dot').forEach(dot => dot.remove());
+        });
+        return;
+    }
     
     let html = '';
     let alertCount = 0;

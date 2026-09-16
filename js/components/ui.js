@@ -69,8 +69,8 @@ function applyTheme(themeSetting) {
         }
     });
 
-    // Update Profile Theme Select
-    const themeSelect = document.getElementById('profile-theme-select');
+    // Keep the Settings theme control in sync with sidebar/mobile theme toggles.
+    const themeSelect = document.getElementById('settings-theme-mode');
     if (themeSelect) {
         themeSelect.value = themeSetting || 'auto';
     }
@@ -78,7 +78,7 @@ function applyTheme(themeSetting) {
 
 // --- Navigation Management ---
 export function switchView(viewId) {
-    const views = ['dashboard', 'list', 'history', 'analytics', 'calendar', 'settings',
+    const views = ['dashboard', 'list', 'history', 'analytics', 'calendar', 'support', 'settings',
         'staff-overview', 'staff-users', 'staff-subscriptions', 'staff-premium', 'staff-reports', 'staff-settings',
         'admin-overview', 'admin-users', 'admin-subscriptions', 'admin-premium', 'admin-reports', 'admin-settings'];
     views.forEach(v => {
@@ -145,6 +145,8 @@ export function closeAllModals() {
     closeModal(document.getElementById('modal-noti'));
     closeModal(document.getElementById('modal-support-user'));
     closeModal(document.getElementById('modal-support-case'));
+    closeModal(document.getElementById('modal-user-support-create'));
+    closeModal(document.getElementById('modal-user-support-detail'));
 }
 
 // --- Toasts ---

@@ -15,7 +15,6 @@ import {
     addSubscription, 
     updateSubscription, 
     deleteSubscription,
-    archiveSubscription,
     createUserAccountDocument,
     saveUserSettings,
     getUserSettings,
@@ -56,6 +55,7 @@ import { resolveUserAccess, resolveUserIdentity, resolveCurrentUserIdentity, res
 import {
     SUPPORT_STATUSES, SUPPORT_PRIORITIES, SUPPORT_CATEGORIES,
     listenSupportCases, listenSupportCaseNotes, createSupportCase,
+    listenMySupportCases, getMySupportDescription, createOwnSupportCase,
     startSupportCase, resolveSupportCase, reopenSupportCase, addSupportCaseNote
 } from './services/support.js';
 
@@ -88,6 +88,14 @@ let supportNotes = [];
 let supportNotesError = null;
 let unsubscribeSupportCases = null;
 let unsubscribeSupportNotes = null;
+let mySupportCases = [];
+let mySupportLoading = false;
+let mySupportError = null;
+let unsubscribeMySupportCases = null;
+let mySupportListenerUid = null;
+let mySupportDetailToken = 0;
+let mySupportDetailCaseId = null;
+let mySupportSubmitting = false;
 
 // Role Helpers
 export const isUser = () => currentUserRole === 'user';
@@ -195,13 +203,21 @@ async function handleAuthStateChange(user) {
     supportCaseTargetId = null;
     supportNotes = [];
     supportNotesError = null;
+    mySupportCases = [];
+    mySupportLoading = false;
+    mySupportError = null;
+    mySupportListenerUid = null;
+    mySupportDetailToken++;
+    mySupportDetailCaseId = null;
     showAuthScreen();
     if (unsubscribeSubs) unsubscribeSubs();
     if (unsubscribeHistory) unsubscribeHistory();
     if (unsubscribeSupportCases) unsubscribeSupportCases();
     if (unsubscribeSupportNotes) unsubscribeSupportNotes();
+    if (unsubscribeMySupportCases) unsubscribeMySupportCases();
     unsubscribeSupportCases = null;
     unsubscribeSupportNotes = null;
+    unsubscribeMySupportCases = null;
 }
 
 // --- Exchange Rate API ---
@@ -359,8 +375,12 @@ function renderCurrentUserIdentity() {
     if (!currentUser) return;
     const identity = getCurrentUserIdentity();
     const initial = identity.primary.charAt(0).toUpperCase();
-    document.getElementById('display-name-desktop').textContent = identity.primary;
-    document.getElementById('display-email-desktop').textContent = identity.email;
+    const desktopName = document.getElementById('display-name-desktop');
+    const desktopEmail = document.getElementById('display-email-desktop');
+    desktopName.textContent = identity.primary;
+    desktopName.title = identity.primary;
+    desktopEmail.textContent = identity.email;
+    desktopEmail.title = identity.email;
     const avatarImgD = document.getElementById('avatar-img-desktop');
     const avatarInitD = document.getElementById('avatar-initial-desktop');
     if (avatarImgD && avatarInitD) {
@@ -501,6 +521,7 @@ async function showAppScreen(resolutionId = authResolutionId, resolveInitialRout
     currentPremiumAccess = resolvedAccess;
     schedulePremiumExpirationRefresh();
     ensureSupportCaseListener();
+    ensureMySupportCaseListener();
 
     updateManagementUI();
     updateRoleBadges();
@@ -620,10 +641,10 @@ function updateManagementUI() {
     const adminProfileActions = document.getElementById('admin-profile-actions');
     adminProfileActions?.classList.toggle('hidden', !isAdmin());
     adminProfileActions?.classList.toggle('flex', isAdmin());
-    for (const id of ['btn-add-mobile', 'btn-add-desktop']) document.getElementById(id)?.classList.toggle('hidden', backOffice);
-    document.getElementById('app-context-label').textContent = isStaff() ? 'SubTracker Staff' : isAdmin() ? 'SubTracker Admin' : 'SubTracker';
+    document.getElementById('btn-add-mobile')?.classList.toggle('hidden', backOffice);
+    document.getElementById('app-context-label').textContent = 'SubTracker';
     const brandTitle = document.getElementById('app-brand-title');
-    if (brandTitle) brandTitle.textContent = isAdmin() ? 'SubTracker Admin' : isStaff() ? 'SubTracker Staff' : 'SubTracker';
+    if (brandTitle) brandTitle.textContent = 'SubTracker';
     for (const id of ['app-brand-desktop', 'app-brand-mobile']) {
         const brand = document.getElementById(id);
         brand?.classList.toggle('bg-amber-500', isAdmin());
@@ -799,6 +820,8 @@ const SUPPORT_STATUS_META = Object.freeze({
 });
 const SUPPORT_PRIORITY_LABELS = Object.freeze({ low: 'ต่ำ', normal: 'ปกติ', high: 'สูง' });
 const SUPPORT_CATEGORY_LABELS = Object.freeze({ account: 'บัญชี', subscription: 'Subscription', premium: 'Premium', billing: 'การเรียกเก็บเงิน', other: 'อื่น ๆ' });
+const USER_SUPPORT_CATEGORY_LABELS = Object.freeze({ account: 'บัญชีและการเข้าสู่ระบบ', subscription: 'รายการสมาชิก', premium: 'Premium', billing: 'การชำระเงิน', other: 'การใช้งานเว็บไซต์ / อื่น ๆ' });
+const userSupportStatusLabel = status => status === 'resolved' ? 'แก้ไขแล้ว' : (SUPPORT_STATUS_META[status] || SUPPORT_STATUS_META.open).label;
 
 function getManagementUser(userId) {
     return managementUsers.find(user => user.id === userId) || { id: userId };
@@ -830,8 +853,125 @@ function validateSupportText(value, maxLength, fieldName, required = true) {
     return normalized;
 }
 
+function renderMySupportPage() {
+    const list = document.getElementById('user-support-list');
+    if (!list) return;
+    const cases = mySupportError || mySupportLoading ? [] : mySupportCases;
+    const counts = {
+        'user-support-total': cases.length,
+        'user-support-open': cases.filter(item => item.status === 'open').length,
+        'user-support-progress': cases.filter(item => item.status === 'in_progress').length,
+        'user-support-resolved': cases.filter(item => item.status === 'resolved').length
+    };
+    Object.entries(counts).forEach(([id, count]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = mySupportLoading ? '–' : count.toLocaleString('th-TH');
+    });
+    const countLabel = document.getElementById('user-support-count');
+    if (countLabel) countLabel.textContent = mySupportLoading || mySupportError ? '' : `${cases.length} เคส`;
+    if (mySupportLoading) {
+        list.innerHTML = '<p class="support-empty">กำลังโหลดข้อมูล...</p>';
+        return;
+    }
+    if (mySupportError) {
+        list.innerHTML = '<div class="support-error flex flex-col sm:flex-row sm:items-center justify-between gap-3"><p>ไม่สามารถโหลดข้อมูล Support ได้ กรุณาลองใหม่อีกครั้ง</p><button type="button" data-retry-my-support class="support-secondary-button">ลองใหม่</button></div>';
+        return;
+    }
+    if (!cases.length) {
+        list.innerHTML = '<div class="py-8 text-center"><i class="fa-regular fa-message text-3xl text-slate-300 dark:text-slate-600" aria-hidden="true"></i><p class="mt-3 font-bold text-slate-700 dark:text-slate-200">ยังไม่มีเรื่องที่แจ้ง</p><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">หากพบปัญหาในการใช้งาน คุณสามารถแจ้งเจ้าหน้าที่ได้จากปุ่มด้านบน</p><button type="button" data-open-user-support-create class="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-sm font-bold text-white"><i class="fa-solid fa-plus" aria-hidden="true"></i>แจ้งปัญหา</button></div>';
+        return;
+    }
+    list.innerHTML = [...cases].sort((a, b) => dateValue(b.updatedAt || b.createdAt) - dateValue(a.updatedAt || a.createdAt))
+        .map(item => {
+            const status = SUPPORT_STATUS_META[item.status] || SUPPORT_STATUS_META.open;
+            const category = USER_SUPPORT_CATEGORY_LABELS[item.category] || item.category || '-';
+            return `<article class="support-case-row"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h4 class="text-sm font-bold text-slate-800 dark:text-slate-100 break-words">${escapeHTML(item.subject || '-')}</h4><span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${status.className}">${userSupportStatusLabel(item.status)}</span></div><p class="mt-1 text-xs text-slate-500 dark:text-slate-400 break-words">${escapeHTML(category)} · แจ้ง ${formatJoinedDate(item.createdAt)} · อัปเดต ${formatJoinedDate(item.updatedAt)}</p></div><button type="button" data-open-my-support-case="${escapeHTML(item.id)}" class="support-secondary-button shrink-0">ดูรายละเอียด</button></div></article>`;
+        }).join('');
+    if (mySupportDetailCaseId) renderMySupportDetailMeta();
+}
+
+function ensureMySupportCaseListener() {
+    if (!currentUser || !isUser()) {
+        if (unsubscribeMySupportCases) unsubscribeMySupportCases();
+        unsubscribeMySupportCases = null;
+        mySupportListenerUid = null;
+        mySupportCases = [];
+        return;
+    }
+    const userId = currentUser.uid;
+    if (unsubscribeMySupportCases && mySupportListenerUid === userId) return;
+    if (unsubscribeMySupportCases) unsubscribeMySupportCases();
+    mySupportListenerUid = userId;
+    mySupportCases = [];
+    mySupportError = null;
+    mySupportLoading = true;
+    renderMySupportPage();
+    unsubscribeMySupportCases = listenMySupportCases((cases, error) => {
+        if (currentUser?.uid !== userId || !isUser()) return;
+        mySupportCases = error ? [] : cases;
+        mySupportError = error || null;
+        mySupportLoading = false;
+        renderMySupportPage();
+    });
+}
+
+function retryMySupportCaseListener() {
+    if (!isUser()) return;
+    if (unsubscribeMySupportCases) unsubscribeMySupportCases();
+    unsubscribeMySupportCases = null;
+    mySupportListenerUid = null;
+    ensureMySupportCaseListener();
+}
+
+function renderMySupportDetailMeta() {
+    const item = mySupportCases.find(entry => entry.id === mySupportDetailCaseId && entry.userId === currentUser?.uid);
+    if (!item) return;
+    const title = document.getElementById('user-support-detail-title');
+    if (title) title.textContent = item.subject || 'รายละเอียดเคส';
+    const meta = document.getElementById('user-support-detail-meta');
+    if (meta) meta.innerHTML = [
+        ['หมวดหมู่', USER_SUPPORT_CATEGORY_LABELS[item.category] || item.category || '-'],
+        ['สถานะ', userSupportStatusLabel(item.status)],
+        ['วันที่แจ้ง', formatJoinedDate(item.createdAt)],
+        ['อัปเดตล่าสุด', formatJoinedDate(item.updatedAt)],
+        ['ผู้รับผิดชอบ', item.assignedTo ? 'มีเจ้าหน้าที่รับเรื่องแล้ว' : 'ยังไม่มอบหมาย']
+    ].map(([label, value]) => supportDetailItem(label, value)).join('');
+}
+
+async function openMySupportDetail(caseId) {
+    if (!isUser() || !currentUser || mySupportError) return;
+    const item = mySupportCases.find(entry => entry.id === caseId && entry.userId === currentUser.uid);
+    if (!item) return;
+    mySupportDetailCaseId = caseId;
+    const token = ++mySupportDetailToken;
+    renderMySupportDetailMeta();
+    const description = document.getElementById('user-support-detail-description');
+    if (description) description.textContent = 'กำลังโหลดข้อมูล...';
+    openModal(document.getElementById('modal-user-support-detail'));
+    try {
+        const ownDescription = await getMySupportDescription(caseId);
+        if (token !== mySupportDetailToken || mySupportDetailCaseId !== caseId) return;
+        if (description) description.textContent = ownDescription || 'ไม่มีรายละเอียดที่คุณแจ้งไว้สำหรับเคสนี้';
+    } catch (error) {
+        console.error('User Support description failed:', error);
+        if (token === mySupportDetailToken && description) description.textContent = 'ไม่สามารถโหลดรายละเอียดได้ กรุณาลองใหม่อีกครั้ง';
+    }
+}
+
+function closeMySupportDetail() {
+    mySupportDetailToken++;
+    mySupportDetailCaseId = null;
+    closeModal(document.getElementById('modal-user-support-detail'));
+}
+
 function ensureSupportCaseListener() {
-    if (!currentUser || (!isStaff() && !isAdmin()) || unsubscribeSupportCases) return;
+    if (!currentUser || (!isStaff() && !isAdmin())) {
+        if (unsubscribeSupportCases) unsubscribeSupportCases();
+        unsubscribeSupportCases = null;
+        supportCases = [];
+        return;
+    }
+    if (unsubscribeSupportCases) return;
     supportCasesLoading = true;
     supportCasesError = null;
     renderSupportSurfaces();
@@ -897,6 +1037,10 @@ function renderSupportBreakdown(containerId, entries, total, accent = 'bg-sky-50
         container.innerHTML = supportLoadErrorMarkup();
         return;
     }
+    if (total === 0) {
+        container.innerHTML = '<p class="support-empty">ยังไม่มีเคส Support</p>';
+        return;
+    }
     container.innerHTML = entries.map(([label, count]) => `<div><div class="flex justify-between text-xs mb-1.5"><span class="text-slate-600 dark:text-slate-300">${escapeHTML(label)}</span><b>${count}</b></div><div class="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"><div class="h-full ${accent} rounded-full" style="width:${Math.min(100, count / Math.max(1, total) * 100)}%"></div></div></div>`).join('');
 }
 
@@ -919,6 +1063,8 @@ function getSupportCategoryEntries() {
 
 function renderSupportReports() {
     const metrics = getSupportMetrics();
+    const staffAssigned = document.getElementById('staff-report-mine');
+    if (staffAssigned) staffAssigned.textContent = `เคสของฉัน ${metrics.mine}`;
     const staffSummary = document.getElementById('staff-report-summary');
     if (staffSummary) staffSummary.innerHTML = [
         ['เคสทั้งหมด', metrics.total], ['รอตรวจสอบ', metrics.open], ['กำลังดำเนินการ', metrics.inProgress], ['ตรวจสอบแล้ว', metrics.resolved]
@@ -1212,7 +1358,7 @@ function renderManagementUsers(panel) {
         const canChangeRole = panel === 'admin' && user.id !== currentUser.uid && access.role !== 'admin';
         const canOverridePremium = panel === 'admin' && user.id !== currentUser.uid && access.role !== 'admin';
         const detailAction = `<button type="button" data-open-support-user="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--detail"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>ดูรายละเอียด</span></button>`;
-        const caseAction = `<button type="button" data-create-support-case="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--case"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>สร้างเคส</span></button>`;
+        const caseAction = `<button type="button" data-create-support-case="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--case" title="สร้างเคส Support สำหรับบัญชีนี้เพื่อบันทึกและติดตามปัญหา"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>เปิดเคส Support</span></button>`;
         let action = panel === 'staff' ? `<div class="admin-user-action-group">${detailAction}${access.role !== 'admin' ? caseAction : ''}</div>` : '';
         let roleAction = '';
         if (canChangeRole && access.role === 'user') {
@@ -1679,6 +1825,46 @@ async function submitSupportCase(event) {
     }
 }
 
+function openMySupportComposer() {
+    if (!isUser() || !currentUser) return;
+    const form = document.getElementById('form-user-support-create');
+    form?.reset();
+    openModal(document.getElementById('modal-user-support-create'));
+    requestAnimationFrame(() => document.getElementById('user-support-subject')?.focus({ preventScroll: true }));
+}
+
+async function submitMySupportCase(event) {
+    event.preventDefault();
+    if (!isUser() || !currentUser || mySupportSubmitting) return;
+    let subject;
+    let category;
+    let description;
+    try {
+        subject = validateSupportText(document.getElementById('user-support-subject').value, 160, 'หัวข้อ');
+        category = document.getElementById('user-support-category').value;
+        description = validateSupportText(document.getElementById('user-support-description').value, 2000, 'รายละเอียดปัญหา');
+        if (!SUPPORT_CATEGORIES.includes(category)) throw new Error('หมวดหมู่ไม่ถูกต้อง');
+    } catch (error) {
+        showToast(error.message || 'ข้อมูลไม่ถูกต้อง', 'error');
+        return;
+    }
+    const button = document.getElementById('btn-submit-user-support');
+    mySupportSubmitting = true;
+    if (button) button.disabled = true;
+    try {
+        await createOwnSupportCase({ subject, category, description });
+        event.currentTarget.reset();
+        closeModal(document.getElementById('modal-user-support-create'));
+        showToast('ส่งเรื่องให้เจ้าหน้าที่แล้ว', 'success');
+    } catch (error) {
+        console.error('User Support creation failed:', error);
+        showToast('ไม่สามารถส่งเรื่องให้เจ้าหน้าที่ได้ กรุณาลองใหม่อีกครั้ง', 'error');
+    } finally {
+        mySupportSubmitting = false;
+        if (button) button.disabled = false;
+    }
+}
+
 async function submitSupportNote(event) {
     event.preventDefault();
     if ((!isStaff() && !isAdmin()) || !currentUser || !supportCaseTargetId) return;
@@ -1999,6 +2185,7 @@ function setupEventListeners() {
         getCategories: () => state.customCategories,
         onAddCategory: addCustomCategory,
         onDeleteCategory: deleteCustomCategory,
+        onChangeThemeMode: changeTheme,
         notify: showToast
     });
     
@@ -2164,9 +2351,25 @@ function setupEventListeners() {
         });
     });
     document.getElementById('form-support-note')?.addEventListener('submit', submitSupportNote);
+    document.getElementById('form-user-support-create')?.addEventListener('submit', submitMySupportCase);
+    document.getElementById('btn-close-user-support-create')?.addEventListener('click', () => closeModal(document.getElementById('modal-user-support-create')));
+    document.getElementById('btn-close-user-support-detail')?.addEventListener('click', closeMySupportDetail);
     document.getElementById('btn-close-support-user')?.addEventListener('click', closeSupportUserDetail);
     document.getElementById('btn-close-support-case')?.addEventListener('click', closeSupportCaseDetail);
     document.addEventListener('click', event => {
+        if (event.target.closest('[data-open-user-support-create]')) {
+            openMySupportComposer();
+            return;
+        }
+        const ownCaseButton = event.target.closest('[data-open-my-support-case]');
+        if (ownCaseButton) {
+            void openMySupportDetail(ownCaseButton.dataset.openMySupportCase);
+            return;
+        }
+        if (event.target.closest('[data-retry-my-support]')) {
+            retryMySupportCaseListener();
+            return;
+        }
         const createCaseButton = event.target.closest('[data-create-support-case]');
         if (createCaseButton) {
             openSupportCaseComposer(createCaseButton.dataset.createSupportCase);
@@ -2216,7 +2419,7 @@ function setupEventListeners() {
     }
 
     // Modal Handlers
-    const addBtns = [document.getElementById('btn-add-desktop'), document.getElementById('btn-add-mobile'), document.getElementById('btn-sidebar-add')];
+    const addBtns = [document.getElementById('btn-add-mobile'), document.getElementById('btn-sidebar-add')];
     addBtns.forEach(btn => {
         if(btn) btn.addEventListener('click', openAddModal);
     });
@@ -2226,6 +2429,8 @@ function setupEventListeners() {
     });
 
     document.getElementById('modal-backdrop').addEventListener('click', () => {
+        mySupportDetailToken++;
+        mySupportDetailCaseId = null;
         if (unsubscribeSupportNotes) unsubscribeSupportNotes();
         unsubscribeSupportNotes = null;
         supportCaseTargetId = null;
@@ -2291,16 +2496,13 @@ function setupEventListeners() {
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังดำเนินการ...';
         btn.disabled = true;
         try {
-            const subData = currentSubs.find(s => s.id === state.editingSubId);
-            if (subData) {
-                await archiveSubscription(currentUser.uid, subData, state.editingSubId);
-                showToast('ย้ายลงสุสานแล้ว!', 'success');
-            }
+            await deleteSubscription(state.editingSubId);
+            showToast('ลบรายการแล้ว!', 'success');
             closeAllModals();
         } catch (error) {
             showToast('เกิดข้อผิดพลาด', 'error');
         } finally {
-            btn.innerHTML = 'ย้ายลงสุสาน';
+            btn.innerHTML = 'ลบรายการ';
             btn.disabled = false;
         }
     });
@@ -2317,9 +2519,6 @@ function setupEventListeners() {
                 navigateToView('admin-settings');
                 return;
             }
-            const currentTheme = localStorage.getItem('theme') || 'auto';
-            const themeSelect = document.getElementById('profile-theme-select');
-            if (themeSelect) themeSelect.value = currentTheme;
             openModal(document.getElementById('modal-profile'));
         });
     }
@@ -2404,11 +2603,6 @@ function setupEventListeners() {
     document.getElementById('form-profile').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const themeSelect = document.getElementById('profile-theme-select');
-        if (themeSelect) {
-            changeTheme(themeSelect.value);
-        }
-
         if (!currentUser) return;
 
         const displayName = document.getElementById('profile-display-name').value.trim();
@@ -2841,6 +3035,11 @@ async function addCustomCategory(name) {
 
 async function deleteCustomCategory(categoryId) {
     if (!currentUser) throw new Error('Authentication required');
+    if (currentSubs.some(subscription => subscription.category === categoryId)) {
+        const error = new Error('หมวดหมู่นี้ยังมีรายการใช้งานอยู่');
+        error.code = 'category-in-use';
+        throw error;
+    }
     const nextCategories = state.customCategories.filter(category => category?.id !== categoryId);
     await saveUserSettings(currentUser.uid, { customCategories: nextCategories });
     state.customCategories = nextCategories;

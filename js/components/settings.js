@@ -2,21 +2,27 @@ let getCategories = () => [];
 let addCategory = null;
 let deleteCategory = null;
 let notify = () => {};
+let changeThemeMode = null;
 
 export function initSettings(options = {}) {
     getCategories = typeof options.getCategories === 'function' ? options.getCategories : getCategories;
     addCategory = typeof options.onAddCategory === 'function' ? options.onAddCategory : null;
     deleteCategory = typeof options.onDeleteCategory === 'function' ? options.onDeleteCategory : null;
     notify = typeof options.notify === 'function' ? options.notify : notify;
+    changeThemeMode = typeof options.onChangeThemeMode === 'function' ? options.onChangeThemeMode : null;
 
     const btnAddCat = document.getElementById('btn-settings-add-cat');
     const inputNewCat = document.getElementById('settings-new-cat');
     const catList = document.getElementById('settings-cat-list');
     const savedNotificationDays = localStorage.getItem('subtracker_noti_days') || '3';
     const notificationSelect = document.getElementById('settings-noti-days');
+    const notificationEnabled = document.getElementById('settings-noti-enabled');
+    const themeModeSelect = document.getElementById('settings-theme-mode');
     const baseCurrencySelect = document.getElementById('settings-base-currency');
 
     if (notificationSelect) notificationSelect.value = ['1', '3', '7'].includes(savedNotificationDays) ? savedNotificationDays : '3';
+    if (notificationEnabled) notificationEnabled.checked = localStorage.getItem('subtracker_noti_enabled') !== 'false';
+    if (themeModeSelect) themeModeSelect.value = localStorage.getItem('theme') || 'auto';
     if (baseCurrencySelect) baseCurrencySelect.value = 'THB';
     renderSettingsCategories();
 
@@ -51,7 +57,7 @@ export function initSettings(options = {}) {
                 notify('ลบหมวดหมู่แล้ว', 'success');
             } catch (error) {
                 button.disabled = false;
-                notify('บันทึกไม่สำเร็จ', 'error');
+                notify(error?.code === 'category-in-use' ? error.message : 'บันทึกไม่สำเร็จ', 'error');
             }
         });
     }
@@ -77,6 +83,9 @@ export function initSettings(options = {}) {
         btnSave.addEventListener('click', () => {
             const notificationDays = document.getElementById('settings-noti-days')?.value || '3';
             localStorage.setItem('subtracker_noti_days', notificationDays);
+            localStorage.setItem('subtracker_noti_enabled', notificationEnabled?.checked === false ? 'false' : 'true');
+            const themeMode = themeModeSelect?.value || 'auto';
+            if (changeThemeMode && ['auto', 'light', 'dark'].includes(themeMode)) changeThemeMode(themeMode);
             notify('บันทึกการตั้งค่าสำเร็จ!', 'success');
             setTimeout(() => location.reload(), 1000);
         });
@@ -104,9 +113,10 @@ function renderSettingsCategories() {
 
     categories.forEach(category => {
         const item = document.createElement('div');
-        item.className = 'flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium';
+        item.className = 'flex items-center gap-2 min-w-0 max-w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium';
 
         const label = document.createElement('span');
+        label.className = 'min-w-0 truncate';
         label.textContent = category.name;
 
         const button = document.createElement('button');

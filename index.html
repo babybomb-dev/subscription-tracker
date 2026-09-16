@@ -178,8 +178,11 @@
                 <button data-view="calendar" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
                     <i class="fa-solid fa-calendar-days w-5"></i> ตารางชำระเงิน
                 </button>
+                <button data-view="support" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-headset w-5"></i> ติดต่อเจ้าหน้าที่
+                </button>
                 <button data-view="settings" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all">
-                    <i class="fa-solid fa-gear w-5"></i> ตั้งค่าขั้นสูง
+                    <i class="fa-solid fa-gear w-5"></i> ตั้งค่า
                 </button>
                 <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                     <button id="btn-sidebar-add" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all">
@@ -212,9 +215,9 @@
                             <img id="avatar-img-desktop" src="" class="hidden w-full h-full object-cover">
                             <span id="avatar-initial-desktop" class="text-indigo-700 dark:text-indigo-300 font-bold">U</span>
                         </div>
-                        <div class="truncate">
-                            <div class="flex items-center gap-2">
-                                <p id="display-name-desktop" class="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">User</p>
+                        <div class="min-w-0 flex-1">
+                            <p id="display-name-desktop" class="block w-full text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">User</p>
+                            <div class="flex flex-wrap items-center gap-1 mt-0.5">
                                 <span id="role-badge-desktop" class="hidden"></span>
                                 <span id="plan-badge-desktop" class="hidden"></span>
                             </div>
@@ -645,98 +648,56 @@
                 </div>
 
                 <!-- VIEW: SETTINGS -->
-                <div id="view-settings" class="view-section space-y-6 hidden">
-                    <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
-                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6"><i class="fa-solid fa-gear mr-2 text-indigo-500"></i> ตั้งค่าขั้นสูง</h2>
-                        
-                        <div class="space-y-6">
-                            <!-- Category Settings -->
-                            <div>
-                                <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-3 text-sm">หมวดหมู่เพิ่มเติม</h3>
-                                <div class="flex gap-2 mb-3">
-                                    <input type="text" id="settings-new-cat" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ชื่อหมวดหมู่ใหม่...">
-                                    <button id="btn-settings-add-cat" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700">เพิ่ม</button>
-                                </div>
-                                <div id="settings-cat-list" class="flex flex-wrap gap-2">
-                                    <!-- Injected -->
-                                </div>
-                            </div>
-                            
-                            <hr class="border-slate-100 dark:border-slate-800">
-                            
-                            <!-- Notification Settings -->
-                            <div>
-                                <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-3 text-sm">การแจ้งเตือน</h3>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-600 dark:text-slate-400">แจ้งเตือนล่วงหน้า (วัน)</span>
-                                    <select id="settings-noti-days" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
-                                        <option value="1">1 วัน</option>
-                                        <option value="3" selected>3 วัน</option>
-                                        <option value="7">7 วัน</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <hr class="border-slate-100 dark:border-slate-800">
-                            
-                            <!-- Currency Settings -->
-                            <div>
-                                <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-3 text-sm">สกุลเงินหลัก</h3>
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm text-slate-600 dark:text-slate-400">สกุลเงินแสดงผลรวม <span class="block text-xs text-slate-400">รองรับ THB เท่านั้นในเวอร์ชันนี้</span></span>
-                                    <select id="settings-base-currency" disabled aria-disabled="true" class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm opacity-70 cursor-not-allowed">
-                                        <option value="THB" selected>THB (฿)</option>
-                                    </select>
-                                </div>
-                                <div class="text-xs text-slate-400 dark:text-slate-500 text-right">
-                                    อัปเดตเรทล่าสุดเมื่อ: <span id="settings-exchange-date">-</span>
-                                </div>
-                            </div>
-
-                            <hr class="border-slate-100 dark:border-slate-800">
-                            
-                            <!-- Theme Settings -->
-                            <div>
-                                <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-3 text-sm">ปรับแต่งธีมสี (Theme)</h3>
-                                <div class="flex gap-3 items-center">
-                                    <button data-theme="indigo" class="w-8 h-8 rounded-full bg-[#4f46e5] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
-                                    <button data-theme="rose" class="w-8 h-8 rounded-full bg-[#e11d48] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
-                                    <button data-theme="emerald" class="w-8 h-8 rounded-full bg-[#059669] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
-                                    <button data-theme="amber" class="w-8 h-8 rounded-full bg-[#d97706] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
-                                    <button data-theme="sky" class="w-8 h-8 rounded-full bg-[#0284c7] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
-                                </div>
-                            </div>
-                            
-                            <hr class="border-slate-100 dark:border-slate-800">
-
-                            <!-- Data Management -->
-                            <div>
-                                <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-3 text-sm">จัดการข้อมูล</h3>
-                                <div class="flex items-center justify-between">
-                                    <div class="flex flex-col">
-                                        <span class="text-sm text-slate-800 dark:text-slate-200 font-bold">สำรองข้อมูล</span>
-                                        <span class="text-xs text-slate-500 dark:text-slate-400">ดาวน์โหลดข้อมูลบริการของคุณเป็นไฟล์ Excel (.csv)</span>
-                                    </div>
-                                    <button id="btn-export-csv-modal" class="flex items-center gap-2 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
-                                        <i class="fa-solid fa-file-csv"></i> ส่งออก
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <hr class="border-slate-100 dark:border-slate-800">
-                            
-                            <div class="flex justify-end gap-3">
-                                <button id="btn-logout-mobile" class="lg:hidden bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50 font-bold py-2 px-6 rounded-xl shadow-sm transition-all flex items-center gap-2">
-                                    <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
-                                </button>
-                                <button id="btn-save-settings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all">
-                                    บันทึกการตั้งค่า
-                                </button>
-                            </div>
-                        </div>
+                <div id="view-settings" class="view-section space-y-4 hidden">
+                    <div class="px-1"><h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100">ตั้งค่า</h2><p class="text-sm text-slate-500 dark:text-slate-400 mt-1">ปรับการแสดงผล การแจ้งเตือน และข้อมูลของแอป</p></div>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <section class="min-w-0 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-200">การแสดงผล</h3>
+                            <div><label for="settings-theme-mode" class="block text-sm text-slate-600 dark:text-slate-400 mb-2">โหมดธีม</label><select id="settings-theme-mode" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200"><option value="auto">ตามระบบ (System)</option><option value="light">สว่าง (Light)</option><option value="dark">มืด (Dark)</option></select></div>
+                            <div><p class="text-sm text-slate-600 dark:text-slate-400 mb-2">สีเน้นของแอป</p><div class="flex flex-wrap gap-3 items-center">
+                                <button type="button" data-theme="indigo" aria-label="สีอินดิโก" class="w-9 h-9 rounded-full bg-[#4f46e5] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
+                                <button type="button" data-theme="rose" aria-label="สีชมพู" class="w-9 h-9 rounded-full bg-[#e11d48] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
+                                <button type="button" data-theme="emerald" aria-label="สีเขียว" class="w-9 h-9 rounded-full bg-[#059669] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
+                                <button type="button" data-theme="amber" aria-label="สีอำพัน" class="w-9 h-9 rounded-full bg-[#d97706] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
+                                <button type="button" data-theme="sky" aria-label="สีฟ้า" class="w-9 h-9 rounded-full bg-[#0284c7] border-2 border-transparent hover:scale-110 transition-transform theme-btn shadow-sm"></button>
+                            </div></div>
+                        </section>
+                        <section class="min-w-0 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-200">การแจ้งเตือน</h3>
+                            <label class="flex items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-400"><span>เปิดการแจ้งเตือนบิลใกล้กำหนด</span><input id="settings-noti-enabled" type="checkbox" class="w-5 h-5 shrink-0 accent-indigo-600" checked></label>
+                            <div class="flex flex-wrap items-center justify-between gap-2"><label for="settings-noti-days" class="text-sm text-slate-600 dark:text-slate-400">แจ้งเตือนล่วงหน้า (วัน)</label><select id="settings-noti-days" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200"><option value="1">1 วัน</option><option value="3" selected>3 วัน</option><option value="7">7 วัน</option></select></div>
+                        </section>
+                        <section class="min-w-0 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-200">ข้อมูลและสกุลเงิน</h3>
+                            <div class="flex flex-wrap items-center justify-between gap-2"><label for="settings-base-currency" class="text-sm text-slate-600 dark:text-slate-400">สกุลเงินหลัก <span class="block text-xs text-slate-400">รองรับ THB เท่านั้นในเวอร์ชันนี้</span></label><select id="settings-base-currency" disabled aria-disabled="true" class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm opacity-70 cursor-not-allowed"><option value="THB" selected>THB (฿)</option></select></div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">อัปเดตอัตราแลกเปลี่ยนล่าสุด: <span id="settings-exchange-date">-</span></p>
+                            <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800"><p class="text-sm text-slate-600 dark:text-slate-400">ส่งออกข้อมูลบริการเป็น CSV</p><button id="btn-export-csv-modal" type="button" class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"><i class="fa-solid fa-file-csv"></i> ส่งออก CSV</button></div>
+                        </section>
+                        <section class="min-w-0 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+                            <h3 class="font-bold text-slate-800 dark:text-slate-200">หมวดหมู่</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">หมวดหมู่ที่คุณสร้างไว้</p>
+                            <div id="settings-cat-list" class="flex flex-wrap gap-2"></div>
+                            <div class="flex flex-wrap sm:flex-nowrap gap-2"><input type="text" id="settings-new-cat" class="min-w-0 flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ชื่อหมวดหมู่ใหม่..."><button id="btn-settings-add-cat" type="button" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700">เพิ่ม</button></div>
+                        </section>
                     </div>
+                    <div class="flex flex-wrap justify-end gap-3 px-1"><button id="btn-logout-mobile" class="lg:hidden bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-900/50 font-bold py-2.5 px-5 rounded-xl shadow-sm inline-flex items-center gap-2"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button><button id="btn-save-settings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-md">บันทึกการตั้งค่า</button></div>
                 </div>
                 
+                <!-- User: Support -->
+                <div id="view-support" class="view-section space-y-4 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 px-1">
+                        <div class="min-w-0"><h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">ติดต่อเจ้าหน้าที่</h2><p class="text-sm text-slate-500 dark:text-slate-400 mt-1">แจ้งปัญหาหรือขอความช่วยเหลือจากเจ้าหน้าที่ และติดตามสถานะเรื่องที่คุณแจ้ง</p></div>
+                        <button type="button" data-open-user-support-create class="self-start inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm"><i class="fa-solid fa-plus" aria-hidden="true"></i>แจ้งปัญหา</button>
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="overview-card min-w-0"><p class="text-xs text-slate-500 dark:text-slate-400">เคสทั้งหมด</p><strong id="user-support-total" class="block mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">0</strong></div>
+                        <div class="overview-card min-w-0"><p class="text-xs text-slate-500 dark:text-slate-400">รอตรวจสอบ</p><strong id="user-support-open" class="block mt-2 text-2xl font-extrabold text-amber-600 dark:text-amber-400">0</strong></div>
+                        <div class="overview-card min-w-0"><p class="text-xs text-slate-500 dark:text-slate-400">กำลังดำเนินการ</p><strong id="user-support-progress" class="block mt-2 text-2xl font-extrabold text-sky-600 dark:text-sky-400">0</strong></div>
+                        <div class="overview-card min-w-0"><p class="text-xs text-slate-500 dark:text-slate-400">แก้ไขแล้ว</p><strong id="user-support-resolved" class="block mt-2 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">0</strong></div>
+                    </div>
+                    <section class="overview-card min-w-0"><div class="flex items-center justify-between gap-3 mb-3"><h3 class="font-bold text-slate-900 dark:text-white">เคสของฉัน</h3><span id="user-support-count" class="text-xs text-slate-500 dark:text-slate-400"></span></div><div id="user-support-list" class="space-y-2" aria-live="polite"><p class="support-empty">กำลังโหลดข้อมูล...</p></div></section>
+                </div>
+
                 <!-- Admin: Overview -->
                 <div id="view-admin-overview" class="view-section space-y-3 hidden">
                     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-1 md:px-2"><div><p class="text-[10px] md:text-xs font-bold uppercase tracking-[0.16em] text-amber-500">Administration Workspace</p><h2 class="text-xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">ภาพรวมระบบ</h2><p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">ข้อมูลจริงจากบัญชีและ Subscriptions ที่ระบบอ่านได้</p></div><button id="btn-admin-refresh" class="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/50 text-xs font-bold text-amber-700 dark:text-amber-400 shadow-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"><i class="fa-solid fa-rotate-right mr-1.5"></i>Refresh</button></div>
@@ -778,12 +739,12 @@
                 <div id="view-admin-settings" class="view-section space-y-5 hidden"><div><h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">ตั้งค่า Admin Workspace</h2><p class="text-sm text-slate-500">การแสดงผลและบัญชีผู้ดูแลระบบ</p></div><section class="max-w-2xl admin-card space-y-5"><div><p class="font-bold text-slate-800 dark:text-white">Theme</p><p class="text-xs text-slate-500 mt-1">สลับ Dark / Light mode โดยไม่เปลี่ยนข้อมูลระบบ</p></div><button id="btn-admin-theme-settings" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold"><i class="fa-solid fa-circle-half-stroke mr-2"></i>สลับ Theme</button><hr class="border-slate-100 dark:border-slate-800"><button id="btn-admin-logout-settings" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 font-bold"><i class="fa-solid fa-right-from-bracket mr-2"></i>ออกจากระบบ</button></section></div>
 
                 <!-- Staff: Overview -->
-                <div id="view-staff-overview" class="view-section space-y-4 hidden">
+                <div id="view-staff-overview" class="view-section space-y-3 hidden">
                     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-1 md:px-2">
                         <div class="space-y-0.5"><h2 class="text-xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">ภาพรวมเจ้าหน้าที่</h2><p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">ภาพรวมระบบสำหรับงานสนับสนุนแบบอ่านอย่างเดียว</p></div>
                         <div class="flex items-center gap-3 self-start sm:self-auto"><p class="text-[11px] text-slate-400 whitespace-nowrap">อัปเดตล่าสุด <span id="staff-stat-updated" class="font-medium text-slate-600 dark:text-slate-300">-</span></p><button id="btn-staff-refresh" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800/50 text-xs font-bold text-sky-600 dark:text-sky-400 shadow-sm hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors"><i class="fa-solid fa-rotate-right mr-1.5"></i>รีเฟรช</button></div>
                     </div>
-                    <div class="overview-kpi-grid grid grid-cols-2 md:grid-cols-6 xl:grid-cols-5 gap-3 lg:gap-4">
+                    <div class="overview-kpi-grid grid grid-cols-2 md:grid-cols-6 xl:grid-cols-5 gap-3">
                         <div class="overview-kpi overview-kpi--gradient overview-kpi--sky"><div class="overview-kpi-topline"><p class="overview-kpi-label">ผู้ใช้ทั้งหมด</p><span class="overview-kpi-icon"><i class="fa-solid fa-users"></i></span></div><strong id="staff-stat-users" class="overview-kpi-value">0</strong></div>
                         <div class="overview-kpi overview-kpi--gradient overview-kpi--violet"><div class="overview-kpi-topline"><p class="overview-kpi-label">Premium</p><span class="overview-kpi-icon"><i class="fa-solid fa-crown"></i></span></div><strong id="staff-stat-plans" class="overview-kpi-value">0 / 0</strong></div>
                         <div class="overview-kpi overview-kpi--neutral"><div class="overview-kpi-topline"><p class="overview-kpi-label">Subscriptions ทั้งระบบ</p><span class="overview-kpi-icon text-indigo-500"><i class="fa-solid fa-receipt"></i></span></div><strong id="staff-stat-subscriptions" class="overview-kpi-value">0</strong></div>
@@ -791,13 +752,13 @@
                         <div class="overview-kpi overview-kpi--neutral col-span-2 md:col-span-1"><div class="overview-kpi-topline"><p class="overview-kpi-label">Paused</p><span class="overview-kpi-icon text-amber-500"><i class="fa-solid fa-circle-pause"></i></span></div><strong id="staff-stat-paused" class="overview-kpi-value">0</strong></div>
                     </div>
                     <section class="overview-card"><div class="flex flex-col lg:flex-row gap-4 lg:items-center"><div class="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:w-[58%]"><div class="support-metric"><span>รอตรวจสอบ</span><strong id="staff-support-open">0</strong></div><div class="support-metric"><span>กำลังดำเนินการ</span><strong id="staff-support-progress">0</strong></div><div class="support-metric"><span>เสร็จวันนี้</span><strong id="staff-support-resolved">0</strong></div><div class="support-metric"><span>เคสของฉัน</span><strong id="staff-support-mine">0</strong></div></div><div class="min-w-0 flex-1"><div class="flex items-center justify-between gap-3 mb-2"><h3 class="overview-section-title">คิว Support ล่าสุด</h3><button data-view="staff-users" class="text-[11px] font-bold text-sky-600 dark:text-sky-400">เปิด Support Center</button></div><div id="staff-support-queue" class="space-y-1.5"><p class="support-empty">กำลังโหลดข้อมูล...</p></div></div></div></section>
-                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.85fr)_minmax(280px,1fr)] gap-4 lg:gap-5 items-start">
+                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.85fr)_minmax(280px,1fr)] gap-3 items-start">
                         <div class="staff-overview-left min-w-0">
                             <section class="overview-card"><div class="flex justify-between items-center gap-3 mb-3"><div class="overview-section-heading"><span class="overview-section-icon bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400"><i class="fa-solid fa-user-clock"></i></span><h3 class="overview-section-title">ผู้ใช้งานล่าสุด</h3></div><button data-view="staff-users" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-[11px] font-bold text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors">ดูทั้งหมด</button></div><div id="staff-latest-users" class="space-y-1.5"></div></section>
                             <section class="overview-card"><div class="flex items-center justify-between gap-2 mb-3"><h3 class="overview-section-title">บัญชีที่ควรตรวจสอบ</h3><button data-view="staff-users" class="text-[11px] font-bold text-sky-600 dark:text-sky-400">ดูทั้งหมด</button></div><div id="staff-account-review" class="space-y-1.5"></div></section>
                             <section class="overview-card"><div class="overview-section-heading mb-3"><span class="overview-section-icon bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"><i class="fa-solid fa-ranking-star"></i></span><h3 class="overview-section-title">บริการยอดนิยม</h3></div><div id="staff-popular-services" class="space-y-2.5"></div></section>
                         </div>
-                        <div class="min-w-0 space-y-4 lg:space-y-5">
+                        <div class="min-w-0 space-y-3">
                             <section class="overview-card"><div class="overview-section-heading mb-2.5"><span class="overview-section-icon bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400"><i class="fa-solid fa-chart-pie"></i></span><h3 class="overview-section-title">Membership Overview</h3></div><div class="flex items-center justify-center gap-5"><div id="staff-plan-chart" class="w-20 h-20 md:w-24 md:h-24 rounded-full shrink-0 flex items-center justify-center"><div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-[10px] font-bold text-slate-500">Plans</div></div><div id="staff-plan-legend" class="w-28 shrink-0 space-y-2 text-xs md:text-sm"></div></div><p id="staff-premium-adoption" class="mt-2.5 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">Premium adoption 0%</p></section>
                             <section class="overview-card"><div class="overview-section-heading mb-3"><span class="overview-section-icon bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-signal"></i></span><h3 class="overview-section-title">สถานะ Subscription</h3></div><div class="space-y-3"><div><div class="flex justify-between text-xs mb-1.5"><span class="font-medium text-emerald-600 dark:text-emerald-400">Active</span><span id="staff-subscription-active-ratio" class="font-bold text-slate-700 dark:text-slate-300">0 — 0.0%</span></div><div class="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div id="staff-subscription-active-bar" class="h-full bg-emerald-500 rounded-full" style="width:0%"></div></div></div><div><div class="flex justify-between text-xs mb-1.5"><span class="font-medium text-amber-600 dark:text-amber-400">Paused</span><span id="staff-subscription-paused-ratio" class="font-bold text-slate-700 dark:text-slate-300">0 — 0.0%</span></div><div class="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div id="staff-subscription-paused-bar" class="h-full bg-amber-500 rounded-full" style="width:0%"></div></div></div><p class="pt-1 text-[11px] text-center text-slate-400">รวม <span id="staff-subscription-status-total" class="font-bold text-slate-600 dark:text-slate-300">0</span> รายการ</p></div></section>
                             <section class="overview-card"><div class="flex items-center justify-between gap-3 mb-3"><div class="overview-section-heading"><span class="overview-section-icon bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-crown"></i></span><h3 class="overview-section-title">Premium ล่าสุด</h3></div><button data-view="staff-premium" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">ดูทั้งหมด</button></div><div id="staff-latest-premium" class="min-w-0"></div></section>
@@ -828,11 +789,11 @@
                 </div>
 
                 <!-- Staff: Reports -->
-                <div id="view-staff-reports" class="view-section space-y-5 hidden">
-                    <div class="space-y-1"><h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">รายงาน</h2><p class="text-sm text-slate-500">Summary จากข้อมูลผู้ใช้และ Subscriptions ที่มีอยู่แล้ว</p></div>
-                    <div id="staff-report-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5"><section class="overview-card"><h3 class="font-bold text-slate-800 dark:text-white mb-4">เคสตามหมวดหมู่</h3><div id="staff-support-categories" class="space-y-3"></div></section><section class="overview-card"><h3 class="font-bold text-slate-800 dark:text-white mb-4">กิจกรรม Support ล่าสุด</h3><div id="staff-support-activity" class="space-y-2"></div></section></div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5"><section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5"><h3 class="font-bold text-slate-800 dark:text-white mb-4">บริการยอดนิยม</h3><div id="staff-report-services" class="space-y-3"></div></section><section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5"><h3 class="font-bold text-slate-800 dark:text-white mb-4">สัดส่วนบัญชี</h3><div id="staff-report-accounts" class="space-y-4"></div></section></div>
+                <div id="view-staff-reports" class="view-section space-y-3 hidden">
+                    <div class="space-y-1"><h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">รายงาน</h2><p class="text-sm text-slate-500">ภาพรวมการสนับสนุนและข้อมูลระบบที่เกี่ยวข้องกับงานเจ้าหน้าที่</p></div>
+                    <div id="staff-report-summary" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3"><section class="overview-card"><h3 class="font-bold text-slate-800 dark:text-white mb-3">เคสตามหมวดหมู่</h3><div id="staff-support-categories" class="space-y-3"></div></section><section class="overview-card"><div class="flex flex-wrap items-center justify-between gap-2 mb-3"><h3 class="font-bold text-slate-800 dark:text-white">กิจกรรม Support ล่าสุด</h3><span id="staff-report-mine" class="text-xs font-semibold text-sky-700 dark:text-sky-300">เคสของฉัน 0</span></div><div id="staff-support-activity" class="space-y-2"></div></section></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3"><section class="overview-card"><h3 class="font-bold text-slate-800 dark:text-white mb-3">บริการยอดนิยม</h3><div id="staff-report-services" class="space-y-3"></div></section><section class="overview-card"><h3 class="font-bold text-slate-800 dark:text-white mb-3">สัดส่วนบัญชี</h3><div id="staff-report-accounts" class="space-y-3"></div></section></div>
                 </div>
 
                 <!-- Staff: Settings -->
@@ -870,6 +831,9 @@
                     <i class="fa-solid fa-calendar-days text-xl mb-1"></i>
                     <span class="text-[9px] font-medium">ปฏิทิน</span>
                 </button>
+                <button data-view="support" class="nav-btn-mobile flex-shrink-0 flex flex-col items-center justify-center w-14 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" title="ติดต่อเจ้าหน้าที่">
+                    <i class="fa-solid fa-headset text-xl mb-1"></i><span class="text-[9px] font-medium">ช่วยเหลือ</span>
+                </button>
             </div>
         </nav>
 
@@ -898,12 +862,6 @@
     <button id="btn-add-mobile" class="lg:hidden fixed bottom-24 right-6 flex items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/40 border-4 border-slate-50 dark:border-slate-950 transition-transform active:scale-95 z-40" title="เพิ่มรายการ">
         <i class="fa-solid fa-plus text-2xl"></i>
     </button>
-
-    <!-- Desktop Add FAB (Hidden on Mobile) -->
-    <button id="btn-add-desktop" class="hidden fixed bottom-8 right-8 items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/40 transition-transform hover:scale-105 active:scale-95 z-40" title="เพิ่มรายการ">
-        <i class="fa-solid fa-plus text-xl"></i>
-    </button>
-
 
     <!-- ==================== MODALS ==================== -->
     
@@ -1095,7 +1053,7 @@
                 <i class="fa-solid fa-trash-can"></i>
             </div>
             <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">ลบรายการนี้?</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้? การกระทำนี้ไม่สามารถกู้คืนได้</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">รายการนี้จะถูกลบออกจากบัญชีของคุณ</p>
             <div class="flex gap-3">
                 <button id="btn-cancel-delete" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-semibold transition-colors">ยกเลิก</button>
                 <button id="btn-confirm-delete" class="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold transition-colors shadow-md">ลบรายการ</button>
@@ -1181,15 +1139,6 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">ลิงก์รูปโปรไฟล์ (URL)</label>
                         <input type="url" id="profile-photo-url" placeholder="https://example.com/image.jpg" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-slate-200 text-sm">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">ธีมแอปพลิเคชัน</label>
-                        <select id="profile-theme-select" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer text-slate-800 dark:text-slate-200 text-sm">
-                            <option value="auto">⚙️ อัตโนมัติ (ตามระบบ)</option>
-                            <option value="light">🌞 สว่าง (Light)</option>
-                            <option value="dark">🌙 มืด (Dark)</option>
-                        </select>
                     </div>
                     
                     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold shadow-md shadow-indigo-500/20 transition-all active:scale-[0.98]">
@@ -1280,6 +1229,23 @@
             <div class="rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/40 p-3 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-shield-halved mr-2"></i>การเปลี่ยนแปลงนี้จะถูกบันทึกใน Premium Audit Log</div>
             <button id="btn-confirm-admin-premium" type="submit" class="w-full rounded-xl bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 py-3 font-bold text-white">ยืนยัน Premium override</button>
         </form>
+    </div>
+
+    <!-- User Support: create a case for the authenticated account -->
+    <div id="modal-user-support-create" class="fixed inset-x-0 bottom-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 bg-white dark:bg-slate-900 rounded-t-3xl lg:rounded-3xl shadow-2xl z-[90] w-full lg:max-w-xl transform translate-y-full lg:translate-y-4 lg:scale-95 lg:opacity-0 transition-all duration-300 max-h-[94vh] flex flex-col hidden" role="dialog" aria-modal="true" aria-labelledby="user-support-create-title">
+        <div class="support-modal-header"><div class="min-w-0"><h3 id="user-support-create-title" class="text-xl font-extrabold text-slate-900 dark:text-white">แจ้งปัญหา</h3><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">กรอกรายละเอียดปัญหาที่พบ เจ้าหน้าที่จะตรวจสอบและติดตามเรื่องให้</p></div><button id="btn-close-user-support-create" type="button" class="support-modal-close" aria-label="ปิดแบบฟอร์ม"><i class="fa-solid fa-xmark"></i></button></div>
+        <form id="form-user-support-create" class="p-4 md:p-6 overflow-y-auto space-y-4">
+            <div><label for="user-support-subject" class="support-label">หัวข้อ</label><input id="user-support-subject" type="text" maxlength="160" required class="admin-field" placeholder="สรุปปัญหาที่พบ"></div>
+            <div><label for="user-support-category" class="support-label">หมวดหมู่</label><select id="user-support-category" required class="admin-field"><option value="account">บัญชีและการเข้าสู่ระบบ</option><option value="subscription">รายการสมาชิก</option><option value="premium">Premium</option><option value="billing">การชำระเงิน</option><option value="other">การใช้งานเว็บไซต์ / อื่น ๆ</option></select></div>
+            <div><label for="user-support-description" class="support-label">รายละเอียดปัญหา</label><textarea id="user-support-description" rows="5" maxlength="2000" required class="admin-field resize-none" placeholder="อธิบายสิ่งที่เกิดขึ้นและสิ่งที่ต้องการให้ช่วยเหลือ"></textarea></div>
+            <button id="btn-submit-user-support" type="submit" class="support-primary-button w-full"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i>ส่งเรื่องให้เจ้าหน้าที่</button>
+        </form>
+    </div>
+
+    <!-- User Support: read-only case details; internal notes are never rendered here -->
+    <div id="modal-user-support-detail" class="fixed inset-x-0 bottom-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 bg-white dark:bg-slate-900 rounded-t-3xl lg:rounded-3xl shadow-2xl z-[90] w-full lg:max-w-xl transform translate-y-full lg:translate-y-4 lg:scale-95 lg:opacity-0 transition-all duration-300 max-h-[94vh] flex flex-col hidden" role="dialog" aria-modal="true" aria-labelledby="user-support-detail-title">
+        <div class="support-modal-header"><h3 id="user-support-detail-title" class="min-w-0 text-xl font-extrabold text-slate-900 dark:text-white truncate">รายละเอียดเคส</h3><button id="btn-close-user-support-detail" type="button" class="support-modal-close" aria-label="ปิดรายละเอียด"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="p-4 md:p-6 overflow-y-auto space-y-4"><div id="user-support-detail-meta" class="support-detail-grid"></div><section class="support-panel"><h4>รายละเอียดปัญหา</h4><p id="user-support-detail-description" class="mt-2 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-words">กำลังโหลดข้อมูล...</p></section></div>
     </div>
 
     <!-- Modal: Internal User Support Detail -->
