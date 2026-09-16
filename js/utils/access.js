@@ -16,15 +16,34 @@ export function resolveUserIdentity(userData = {}) {
     const email = cleanIdentityValue(userData.email);
     const uid = cleanIdentityValue(userData.id) || cleanIdentityValue(userData.uid);
     const uidLabel = uid ? `UID ${uid.slice(0, 8)}${uid.length > 8 ? '…' : ''}` : '';
+    const missingName = !displayName;
+    const missingEmail = !email;
+    const qualityLabel = missingName && missingEmail ? 'ไม่มีชื่อและอีเมล'
+        : missingName ? 'ยังไม่มีชื่อที่แสดง'
+        : missingEmail ? 'ไม่มีอีเมล' : 'ข้อมูลบัญชีพร้อมใช้งาน';
+    const reviewReasons = missingName && missingEmail ? ['ไม่มีชื่อและอีเมล']
+        : missingName ? ['ไม่มีชื่อ'] : missingEmail ? ['ไม่มีอีเมล'] : [];
 
     return {
         primary: displayName || email || 'ผู้ใช้',
-        secondary: displayName && email ? email : uidLabel,
+        secondary: displayName ? (email || uidLabel) : (email ? 'ยังไม่มีชื่อที่แสดง' : uidLabel),
         displayName,
         email,
         uid,
+        uidLabel,
+        qualityLabel,
+        reviewReasons,
         source: canonicalName ? 'displayName' : legacyName ? 'name' : email ? 'email' : 'fallback'
     };
+}
+
+export function resolveCurrentUserIdentity(profile = {}, authUser = {}) {
+    return resolveUserIdentity({
+        id: authUser?.uid,
+        displayName: profile?.displayName,
+        name: cleanIdentityValue(profile?.name) || authUser?.displayName,
+        email: cleanIdentityValue(profile?.email) || authUser?.email
+    });
 }
 
 export function firestoreValueToDate(value) {
@@ -34,9 +53,19 @@ export function firestoreValueToDate(value) {
         const date = value.toDate();
         return Number.isNaN(date.getTime()) ? null : date;
     }
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
+    if (typeof value.seconds === 'number') {
+        const date = new Date(value.seconds * 1000);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function resolveUserCreatedAt(user) {
+    for (const field of ['createdAt', 'created_at']) {
+        if (firestoreValueToDate(user?.[field])) return user[field];
+    }
+    return null;
 }
 
 export function calculatePremiumUntil(premiumPlan, purchasedAt = new Date()) {

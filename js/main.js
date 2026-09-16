@@ -52,7 +52,7 @@ import { initNotifications, requestNotificationPermission, checkUpcomingNotifica
 import { subscriptionPresets } from './utils/presets.js';
 import { initPWA } from './pwa.js';
 import { calculateNextBillingDate, getCategoryName, updateCustomCategories } from './utils/helpers.js';
-import { resolveUserAccess, resolveUserIdentity, canAccessView, hasPremiumPlan, calculatePremiumUntil } from './utils/access.js';
+import { resolveUserAccess, resolveUserIdentity, resolveCurrentUserIdentity, resolveUserCreatedAt, firestoreValueToDate, canAccessView, hasPremiumPlan, calculatePremiumUntil } from './utils/access.js';
 import {
     SUPPORT_STATUSES, SUPPORT_PRIORITIES, SUPPORT_CATEGORIES,
     listenSupportCases, listenSupportCaseNotes, createSupportCase,
@@ -61,6 +61,7 @@ import {
 
 // --- Global State ---
 export let currentUser = null;
+let currentUserProfile = null;
 export let currentUserRole = 'user'; // 'user', 'staff', 'admin'
 export let currentUserPlan = 'free'; // 'free', 'premium'
 export let currentPremiumAccess = resolveUserAccess({});
@@ -177,6 +178,7 @@ async function handleAuthStateChange(user) {
     }
 
     currentUser = null;
+    currentUserProfile = null;
     currentUserRole = 'user';
     currentUserPlan = 'free';
     currentPremiumAccess = resolveUserAccess({});
@@ -349,23 +351,21 @@ function setupPasswordVisibilityToggle(inputId, buttonId) {
     });
 }
 
-async function showAppScreen(resolutionId = authResolutionId, resolveInitialRoute = false) {
-    showLoadingScreen();
-    const appUser = currentUser;
-    if (!appUser) return false;
-    
-    // Update Profile UI
-    const name = appUser.displayName || 'User';
-    const initial = name.charAt(0).toUpperCase();
-    
-    // Desktop Profile
-    document.getElementById('display-name-desktop').textContent = name;
-    document.getElementById('display-email-desktop').textContent = appUser.email;
+function getCurrentUserIdentity() {
+    return resolveCurrentUserIdentity(currentUserProfile || {}, currentUser || {});
+}
+
+function renderCurrentUserIdentity() {
+    if (!currentUser) return;
+    const identity = getCurrentUserIdentity();
+    const initial = identity.primary.charAt(0).toUpperCase();
+    document.getElementById('display-name-desktop').textContent = identity.primary;
+    document.getElementById('display-email-desktop').textContent = identity.email;
     const avatarImgD = document.getElementById('avatar-img-desktop');
     const avatarInitD = document.getElementById('avatar-initial-desktop');
     if (avatarImgD && avatarInitD) {
-        if (appUser.photoURL) {
-            avatarImgD.src = appUser.photoURL;
+        if (currentUser.photoURL) {
+            avatarImgD.src = currentUser.photoURL;
             avatarImgD.classList.remove('hidden');
             avatarInitD.classList.add('hidden');
         } else {
@@ -379,8 +379,8 @@ async function showAppScreen(resolutionId = authResolutionId, resolveInitialRout
     const avatarImgM = document.getElementById('avatar-img-mobile');
     const avatarInitM = document.getElementById('avatar-initial-mobile');
     if (avatarImgM && avatarInitM) {
-        if (appUser.photoURL) {
-            avatarImgM.src = appUser.photoURL;
+        if (currentUser.photoURL) {
+            avatarImgM.src = currentUser.photoURL;
             avatarImgM.classList.remove('hidden');
             avatarInitM.classList.add('hidden');
         } else {
@@ -394,8 +394,8 @@ async function showAppScreen(resolutionId = authResolutionId, resolveInitialRout
     const greetingAvatarImg = document.getElementById('greeting-avatar-img');
     const greetingAvatarInit = document.getElementById('greeting-avatar-initial');
     if (greetingAvatarImg && greetingAvatarInit) {
-        if (appUser.photoURL) {
-            greetingAvatarImg.src = appUser.photoURL;
+        if (currentUser.photoURL) {
+            greetingAvatarImg.src = currentUser.photoURL;
             greetingAvatarImg.classList.remove('hidden');
             greetingAvatarInit.classList.add('hidden');
         } else {
@@ -404,6 +404,28 @@ async function showAppScreen(resolutionId = authResolutionId, resolveInitialRout
             greetingAvatarImg.classList.add('hidden');
         }
     }
+
+    document.getElementById('profile-modal-name').textContent = identity.primary;
+    document.getElementById('profile-display-name').value = identity.displayName || '';
+    document.getElementById('profile-modal-email').textContent = identity.email;
+    document.getElementById('profile-photo-url').value = currentUser.photoURL || '';
+    const pModalImg = document.getElementById('profile-modal-img');
+    const pModalInit = document.getElementById('profile-modal-initial');
+    if (currentUser.photoURL) {
+        pModalImg.src = currentUser.photoURL;
+        pModalImg.classList.remove('hidden');
+        pModalInit.classList.add('hidden');
+    } else {
+        pModalInit.textContent = initial;
+        pModalInit.classList.remove('hidden');
+        pModalImg.classList.add('hidden');
+    }
+}
+
+async function showAppScreen(resolutionId = authResolutionId, resolveInitialRoute = false) {
+    showLoadingScreen();
+    const appUser = currentUser;
+    if (!appUser) return false;
 
     // Load Budget from localStorage
     const savedBudget = localStorage.getItem(`budget_${appUser.uid}`);
@@ -473,6 +495,7 @@ async function showAppScreen(resolutionId = authResolutionId, resolveInitialRout
 
     // Ignore an older async role lookup if auth changed while it was in flight.
     if (resolutionId !== authResolutionId || currentUser?.uid !== appUser.uid) return false;
+    currentUserProfile = settings || { displayName: appUser.displayName, email: appUser.email };
     currentUserRole = resolvedRole;
     currentUserPlan = resolvedPlan;
     currentPremiumAccess = resolvedAccess;
@@ -482,6 +505,7 @@ async function showAppScreen(resolutionId = authResolutionId, resolveInitialRout
     updateManagementUI();
     updateRoleBadges();
     updatePremiumUpgradeUI();
+    renderCurrentUserIdentity();
 
     if (resolveInitialRoute) {
         const requestedView = window.location.hash.replace(/^#\/?/, '');
@@ -489,23 +513,6 @@ async function showAppScreen(resolutionId = authResolutionId, resolveInitialRout
         navigateToView(requestedView && canAccessView(requestedView, currentUserRole) ? requestedView : fallbackView);
     }
 
-    // Populate Profile Modal
-    document.getElementById('profile-modal-name').textContent = name;
-    document.getElementById('profile-display-name').value = name;
-    document.getElementById('profile-modal-email').textContent = appUser.email;
-    document.getElementById('profile-photo-url').value = appUser.photoURL || '';
-    
-    const pModalImg = document.getElementById('profile-modal-img');
-    const pModalInit = document.getElementById('profile-modal-initial');
-    if (appUser.photoURL) {
-        pModalImg.src = appUser.photoURL;
-        pModalImg.classList.remove('hidden');
-        pModalInit.classList.add('hidden');
-    } else {
-        pModalInit.textContent = initial;
-        pModalInit.classList.remove('hidden');
-        pModalImg.classList.add('hidden');
-    }
     appLoadingScreen?.classList.add('hidden');
     appScreen.classList.remove('hidden', 'lg:hidden');
     return true;
@@ -545,7 +552,8 @@ function renderSmartGreeting(activeSubs, totalCost, budget) {
     else if (hour >= 17 && hour < 22) greeting = 'สวัสดีตอนเย็น 🌙';
     else greeting = 'ราตรีสวัสดิ์ 💤';
 
-    const name = currentUser?.displayName ? `คุณ ${currentUser.displayName.split(' ')[0]}` : '';
+    const displayName = getCurrentUserIdentity().displayName;
+    const name = displayName ? `คุณ ${displayName.split(' ')[0]}` : '';
     titleEl.textContent = `${greeting} ${name}`;
 
     let insight = '';
@@ -773,13 +781,10 @@ function formatJoinedDate(createdAt) {
     return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('th-TH');
 }
 
-function getUserCreatedAt(user) {
-    return user?.createdAt ?? user?.created_at ?? null;
-}
+const getUserCreatedAt = resolveUserCreatedAt;
 
 function toDate(value) {
-    if (!value) return new Date(NaN);
-    return typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+    return firestoreValueToDate(value) || new Date(NaN);
 }
 
 function dateValue(value) {
@@ -806,9 +811,7 @@ function getSupportIdentity(userId) {
 function getAccountReviewReasons(user) {
     const access = resolveUserAccess(user);
     const identity = resolveUserIdentity(user);
-    const reasons = [];
-    if (!identity.displayName) reasons.push('ไม่มีชื่อ');
-    if (!identity.email) reasons.push('ไม่มีอีเมล');
+    const reasons = [...identity.reviewReasons];
     if (access.legacyPremium) reasons.push('ข้อมูล Premium แบบเดิม');
     return reasons;
 }
@@ -1183,8 +1186,8 @@ function renderManagementUsers(panel) {
     const users = managementUsers.filter(user => {
         const access = resolveUserAccess(user);
         const identity = resolveUserIdentity(user);
-        const matchesSearch = !search || [identity.primary, identity.secondary, identity.email, identity.uid]
-            .some(value => value.toLowerCase().includes(search));
+        const matchesSearch = !search || [user.displayName, user.name, identity.primary, identity.secondary, identity.email, identity.uid]
+            .some(value => String(value || '').toLowerCase().includes(search));
         return matchesSearch && (roleFilter === 'all' || access.role === roleFilter) &&
             (planFilter === 'all' || access.plan === planFilter);
     });
@@ -1227,7 +1230,9 @@ function renderManagementUsers(panel) {
         tr.className = 'border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50';
         const reviewReasons = getAccountReviewReasons(user);
         const reviewBadge = reviewReasons.length ? `<div class="mt-1 text-[9px] font-bold text-amber-600 dark:text-amber-400">ควรตรวจสอบ · ${escapeHTML(reviewReasons.join(' / '))}</div>` : '<div class="mt-1 text-[9px] font-medium text-emerald-600 dark:text-emerald-400">ข้อมูลบัญชีพร้อมใช้งาน</div>';
-        const accountCell = `<td class="py-2 px-3"><div class="font-medium">${escapeHTML(identity.primary)}</div>${identity.email && identity.email !== identity.primary ? `<div class="text-xs text-slate-400 truncate max-w-[190px]">${escapeHTML(identity.email)}</div>` : ''}${panel === 'staff' ? reviewBadge : ''}</td>`;
+        const adminQuality = identity.qualityLabel === 'ยังไม่มีชื่อที่แสดง' ? ''
+            : `<div class="mt-1 text-[9px] font-medium ${identity.reviewReasons.length ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}">${escapeHTML(identity.qualityLabel)}</div>`;
+        const accountCell = `<td class="py-2 px-3"><div class="font-medium max-w-[190px] truncate" title="${escapeHTML(identity.primary)}">${escapeHTML(identity.primary)}</div>${identity.secondary ? `<div class="text-xs text-slate-400 max-w-[190px] truncate" title="${escapeHTML(identity.secondary)}">${escapeHTML(identity.secondary)}</div>` : ''}${panel === 'staff' ? reviewBadge : adminQuality}</td>`;
         tr.innerHTML = panel === 'admin' ? `
             ${accountCell}<td class="py-2 px-3 font-bold ${roleColors}">${escapeHTML(access.role)}</td><td class="py-2 px-3">${planBadge}</td><td class="py-2 px-3 capitalize">${!isSystemAccount && access.plan === 'premium' ? escapeHTML(getPremiumPlanLabel(access.premiumPlan)) : '-'}</td><td class="py-2 px-3 whitespace-nowrap">${formatJoinedDate(getUserCreatedAt(user))}</td><td class="py-2 px-3 text-right">${action}</td>
         ` : `
@@ -1260,11 +1265,11 @@ function renderCompactUsers(containerId, users, premiumOnly = false) {
     container.innerHTML = users.map(user => {
         const access = resolveUserAccess(user);
         const identity = resolveUserIdentity(user);
-        const date = premiumOnly ? formatJoinedDate(user.premiumSince) : formatJoinedDate(user.createdAt);
+        const date = premiumOnly ? formatJoinedDate(user.premiumSince) : formatJoinedDate(getUserCreatedAt(user));
         const dateMarkup = premiumOnly || date !== '-' ? `<p class="text-[9px] text-slate-400 mt-0.5">${date}</p>` : '';
         const planBadge = access.role === 'user'
             ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${access.plan === 'premium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'}">${access.plan === 'premium' ? 'Premium' : 'Free'}</span>`
-            : '';
+            : '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300">System</span>';
         return `<div class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
             <div class="min-w-0"><p class="text-xs md:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">${escapeHTML(identity.primary)}</p>${identity.secondary ? `<p class="text-[10px] md:text-xs text-slate-400 truncate">${escapeHTML(identity.secondary)}</p>` : ''}</div>
             <div class="text-right shrink-0"><div class="flex justify-end gap-1"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${escapeHTML(access.role)}</span>${planBadge}</div>${dateMarkup}</div>
@@ -1351,7 +1356,7 @@ function renderStaffBackOffice() {
     if (activeBar) activeBar.style.width = `${activePercent}%`;
     if (pausedBar) pausedBar.style.width = `${pausedPercent}%`;
 
-    const latestUsers = [...managementUsers].sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt)).slice(0, 4);
+    const latestUsers = [...managementUsers].sort((a, b) => dateValue(getUserCreatedAt(b)) - dateValue(getUserCreatedAt(a))).slice(0, 4);
     const latestPremium = managementUsers.filter(user => resolveUserAccess(user).plan === 'premium').sort((a, b) => dateValue(b.premiumSince) - dateValue(a.premiumSince)).slice(0, 1);
     renderCompactUsers('staff-latest-users', latestUsers);
     const staffIssues = managementUsers.map(user => ({ user, reasons: getAccountReviewReasons(user) }))
@@ -1462,7 +1467,7 @@ function renderAdminBackOffice() {
     renderAdminRatioList('admin-role-overview', [['User', metrics.roles.user, 'bg-slate-400'], ['Staff', metrics.roles.staff, 'bg-sky-500'], ['Admin', metrics.roles.admin, 'bg-amber-500']], totalUsers);
     renderAdminRatioList('admin-premium-overview', [['Monthly', metrics.premium.monthly], ['Yearly', metrics.premium.yearly], ['Lifetime', metrics.premium.lifetime], ['Expired', metrics.premium.expired, 'bg-rose-500']], metrics.premium.total);
     renderAdminRatioList('admin-subscription-overview', [['Active', metrics.activeSubscriptions, 'bg-emerald-500'], ['Paused', metrics.pausedSubscriptions, 'bg-amber-500']], managementSubscriptions.length);
-    renderCompactUsers('admin-latest-users', [...managementUsers].sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt)).slice(0, 5));
+    renderCompactUsers('admin-latest-users', [...managementUsers].sort((a, b) => dateValue(getUserCreatedAt(b)) - dateValue(getUserCreatedAt(a))).slice(0, 5));
 
     const issues = managementUsers.map(user => ({ user, reasons: getAccountReviewReasons(user) }))
         .filter(item => item.reasons.length).slice(0, 5);
@@ -2054,6 +2059,11 @@ function setupEventListeners() {
         try {
             const userCredential = await register(name, email, pass);
             await createUserAccountDocument(userCredential.user.uid, userCredential.user.email, name);
+            if (currentUser?.uid === userCredential.user.uid) {
+                currentUserProfile = { ...currentUserProfile, displayName: name, email: userCredential.user.email };
+                renderCurrentUserIdentity();
+                if (isUser()) updateUI();
+            }
             showToast('สมัครสมาชิกสำเร็จ!', 'success');
         } catch (error) {
             showToast(error.message, 'error');
@@ -2401,7 +2411,7 @@ function setupEventListeners() {
 
         if (!currentUser) return;
 
-        const displayName = document.getElementById('profile-display-name').value;
+        const displayName = document.getElementById('profile-display-name').value.trim();
         const photoURL = document.getElementById('profile-photo-url').value;
         const btn = e.target.querySelector('button[type="submit"]');
         const originalText = btn.innerHTML;
@@ -2416,7 +2426,9 @@ function setupEventListeners() {
             // but we can manually update the DOM since we know it succeeded.
             currentUser.displayName = displayName;
             currentUser.photoURL = photoURL;
-            showAppScreen(); // Refresh UI
+            if (!isStaff()) currentUserProfile = { ...currentUserProfile, displayName };
+            renderCurrentUserIdentity();
+            if (isUser()) updateUI();
             showToast('อัปเดตโปรไฟล์เรียบร้อย!', 'success');
             closeAllModals();
         } catch (error) {

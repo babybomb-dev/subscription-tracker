@@ -111,14 +111,31 @@ export async function hardDeleteCanceledSubscription(docId) {
 export async function createUserAccountDocument(userId, email, displayName = '') {
     const docRef = doc(db, 'users', userId);
     const normalizedDisplayName = typeof displayName === 'string' ? displayName.trim() : '';
-    const accountData = {
-        role: 'user',
-        plan: 'free',
-        email: email || null,
-        createdAt: serverTimestamp()
-    };
-    if (normalizedDisplayName) accountData.displayName = normalizedDisplayName;
-    return await setDoc(docRef, accountData, { merge: true });
+    const normalizedEmail = typeof email === 'string' ? email.trim() : '';
+    return await runTransaction(db, async transaction => {
+        const snapshot = await transaction.get(docRef);
+        if (!snapshot.exists()) {
+            const accountData = {
+                role: 'user',
+                plan: 'free',
+                email: normalizedEmail || null,
+                createdAt: serverTimestamp()
+            };
+            if (normalizedDisplayName) accountData.displayName = normalizedDisplayName;
+            transaction.set(docRef, accountData);
+            return true;
+        }
+
+        // Auth initialization and registration can race; never reset an existing account's createdAt/role/plan.
+        const existing = snapshot.data();
+        const updates = {};
+        if (!String(existing.email || '').trim() && normalizedEmail) updates.email = normalizedEmail;
+        if (!String(existing.displayName || '').trim() && !String(existing.name || '').trim() && normalizedDisplayName) {
+            updates.displayName = normalizedDisplayName;
+        }
+        if (Object.keys(updates).length) transaction.update(docRef, updates);
+        return false;
+    });
 }
 
 export async function saveUserSettings(userId, settings) {
@@ -169,7 +186,8 @@ export async function syncAuthenticatedUserDisplayNameIfMissing() {
         const docSnap = await transaction.get(docRef);
         if (!docSnap.exists()) return false;
         const storedName = docSnap.data().displayName;
-        if (typeof storedName === 'string' && storedName.trim()) return false;
+        if ((typeof storedName === 'string' && storedName.trim())
+            || (typeof docSnap.data().name === 'string' && docSnap.data().name.trim())) return false;
         transaction.update(docRef, { displayName });
         return true;
     });

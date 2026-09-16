@@ -130,6 +130,14 @@
     align-items: stretch;
 }
 
+#view-admin-overview .admin-overview-secondary-grid {
+    gap: 0.75rem;
+}
+
+#view-admin-overview .admin-overview-analytics-grid > .overview-card > :last-child > div + div {
+    margin-top: 0.5rem;
+}
+
 .admin-overview-analytics-grid > .overview-card,
 .admin-overview-secondary-grid > .overview-card {
     align-self: stretch;
