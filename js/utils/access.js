@@ -5,6 +5,28 @@ const STAFF_VIEWS = Object.freeze(['staff-overview', 'staff-users', 'staff-subsc
 const ADMIN_VIEWS = Object.freeze(['admin-overview', 'admin-users', 'admin-subscriptions', 'admin-premium', 'admin-reports', 'admin-settings']);
 const VALID_VIEWS = Object.freeze(['dashboard', 'list', 'history', 'analytics', 'calendar', 'settings', ...STAFF_VIEWS, ...ADMIN_VIEWS]);
 
+function cleanIdentityValue(value) {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+export function resolveUserIdentity(userData = {}) {
+    const canonicalName = cleanIdentityValue(userData.displayName);
+    const legacyName = cleanIdentityValue(userData.name);
+    const displayName = canonicalName || legacyName;
+    const email = cleanIdentityValue(userData.email);
+    const uid = cleanIdentityValue(userData.id) || cleanIdentityValue(userData.uid);
+    const uidLabel = uid ? `UID ${uid.slice(0, 8)}${uid.length > 8 ? '…' : ''}` : '';
+
+    return {
+        primary: displayName || email || 'ผู้ใช้',
+        secondary: displayName && email ? email : uidLabel,
+        displayName,
+        email,
+        uid,
+        source: canonicalName ? 'displayName' : legacyName ? 'name' : email ? 'email' : 'fallback'
+    };
+}
+
 export function firestoreValueToDate(value) {
     if (!value) return null;
     if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;

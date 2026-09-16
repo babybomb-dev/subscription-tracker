@@ -21,6 +21,106 @@ service cloud.firestore {
     function isSupport() { return isStaff() || isAdmin(); }
     function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
 
+    function isValidSupportStatus(status) {
+      return status == 'open' || status == 'in_progress' || status == 'resolved';
+    }
+
+    function isValidSupportPriority(priority) {
+      return priority == 'low' || priority == 'normal' || priority == 'high';
+    }
+
+    function isValidSupportCategory(category) {
+      return category == 'account' || category == 'subscription' || category == 'premium'
+             || category == 'billing' || category == 'other';
+    }
+
+    function isValidSupportSubject(subject) {
+      return subject is string
+             && subject.size() > 0
+             && subject.size() <= 160
+             && subject.matches('.*[^\\s].*');
+    }
+
+    function isValidSupportAssignment(assignedTo) {
+      return assignedTo == null
+             || (assignedTo is string
+                 && assignedTo.size() > 0
+                 && assignedTo.size() <= 128
+                 && exists(/databases/$(database)/documents/users/$(assignedTo))
+                 && (get(/databases/$(database)/documents/users/$(assignedTo)).data.get('role', 'user') == 'staff'
+                     || get(/databases/$(database)/documents/users/$(assignedTo)).data.get('role', 'user') == 'admin'));
+    }
+
+    function isValidSupportCaseCreate() {
+      return isSupport()
+             && request.resource.data.keys().hasOnly([
+                  'userId', 'subject', 'category', 'status', 'priority', 'createdBy',
+                  'createdByRole', 'assignedTo', 'createdAt', 'updatedAt', 'resolvedAt'
+                ])
+             && request.resource.data.userId is string
+             && request.resource.data.userId.size() > 0
+             && request.resource.data.userId.size() <= 128
+             && exists(/databases/$(database)/documents/users/$(request.resource.data.userId))
+             && isValidSupportSubject(request.resource.data.subject)
+             && isValidSupportCategory(request.resource.data.category)
+             && request.resource.data.status == 'open'
+             && isValidSupportPriority(request.resource.data.priority)
+             && request.resource.data.createdBy == request.auth.uid
+             && request.resource.data.createdByRole == requesterRole()
+             && request.resource.data.assignedTo == null
+             && request.resource.data.createdAt == request.time
+             && request.resource.data.updatedAt == request.time
+             && request.resource.data.resolvedAt == null;
+    }
+
+    function isValidSupportWorkflowValues() {
+      let statusChanged = request.resource.data.status != resource.data.status;
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'priority', 'assignedTo', 'updatedAt', 'resolvedAt'])
+             && isValidSupportStatus(request.resource.data.status)
+             && isValidSupportPriority(request.resource.data.priority)
+             && isValidSupportAssignment(request.resource.data.assignedTo)
+             && request.resource.data.updatedAt == request.time
+             && ((!statusChanged && request.resource.data.resolvedAt == resource.data.resolvedAt)
+                 || (statusChanged && request.resource.data.status == 'resolved'
+                     && request.resource.data.resolvedAt == request.time)
+                 || (statusChanged && request.resource.data.status != 'resolved'
+                     && request.resource.data.resolvedAt == null));
+    }
+
+    function isValidStaffSupportCaseUpdate() {
+      let oldStatus = resource.data.status;
+      let newStatus = request.resource.data.status;
+      let oldAssignee = resource.data.assignedTo;
+      let newAssignee = request.resource.data.assignedTo;
+      return isStaff()
+             && isValidSupportWorkflowValues()
+             && oldStatus != 'resolved'
+             && ((oldStatus == 'open' && (newStatus == 'open' || newStatus == 'in_progress'))
+                 || (oldStatus == 'in_progress' && (newStatus == 'in_progress' || newStatus == 'resolved')))
+             && ((oldAssignee == null && (newAssignee == null || newAssignee == request.auth.uid))
+                 || (oldAssignee != null && newAssignee == oldAssignee))
+             && (newStatus != 'in_progress' || newAssignee == request.auth.uid)
+             && (newStatus != 'resolved' || oldAssignee == request.auth.uid);
+    }
+
+    function isValidAdminSupportCaseUpdate() {
+      return isAdmin() && isValidSupportWorkflowValues();
+    }
+
+    function isValidSupportNoteCreate(parentCaseId) {
+      return isSupport()
+             && exists(/databases/$(database)/documents/support_cases/$(parentCaseId))
+             && request.resource.data.keys().hasOnly(['authorId', 'authorRole', 'message', 'createdAt'])
+             && request.resource.data.authorId == request.auth.uid
+             && request.resource.data.authorRole == requesterRole()
+             && request.resource.data.message is string
+             && request.resource.data.message.size() > 0
+             && request.resource.data.message.size() <= 2000
+             && request.resource.data.message.matches('.*[^\\s].*')
+             && request.resource.data.createdAt == request.time;
+    }
+
     function isValidStaffEmailSync(targetUserId) {
       let oldEmail = resource.data.get('email', null);
       let authEmail = request.auth.token.get('email', null);
@@ -32,6 +132,19 @@ service cloud.firestore {
              && authEmail is string
              && authEmail.matches('.*[^\\s].*')
              && request.resource.data.get('email', null) == authEmail;
+    }
+
+    function isValidAuthDisplayNameSync(targetUserId) {
+      let oldName = resource.data.get('displayName', null);
+      let authName = request.auth.token.get('name', null);
+      return isOwner(targetUserId)
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])
+             && (oldName == null || (oldName is string && oldName.matches('^\\s*$')))
+             && authName is string
+             && authName.size() > 0
+             && authName.size() <= 160
+             && authName.matches('.*[^\\s].*')
+             && request.resource.data.get('displayName', null) == authName;
     }
 
     function isValidAdminRoleTransition(targetUserId) {
@@ -212,6 +325,7 @@ service cloud.firestore {
                         && resource.data.get('role', 'user') != 'staff'
                         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'premiumPlan', 'premiumSince', 'premiumUntil', 'lastPremiumAuditId']))
                        || isValidStaffEmailSync(userId)
+                       || isValidAuthDisplayNameSync(userId)
                        || (isAdmin() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'premiumPlan', 'premiumSince', 'premiumUntil', 'lastPremiumAuditId']))
                        || (isAdmin() && isValidAdminRoleTransition(userId))
                        || isValidAdminPremiumOverride(userId)
@@ -238,6 +352,19 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if signedIn() && isValidPremiumAuditLog(auditId);
       allow update, delete: if false;
+    }
+
+    match /support_cases/{caseId} {
+      allow read: if isSupport();
+      allow create: if isValidSupportCaseCreate();
+      allow update: if isValidStaffSupportCaseUpdate() || isValidAdminSupportCaseUpdate();
+      allow delete: if false;
+
+      match /notes/{noteId} {
+        allow read: if isSupport();
+        allow create: if isValidSupportNoteCreate(caseId);
+        allow update, delete: if false;
+      }
     }
 
     // Payment History Rules

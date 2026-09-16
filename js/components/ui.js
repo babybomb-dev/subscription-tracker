@@ -143,6 +143,8 @@ export function closeAllModals() {
     closeModal(document.getElementById('modal-year-in-review'));
     closeModal(document.getElementById('modal-category'));
     closeModal(document.getElementById('modal-noti'));
+    closeModal(document.getElementById('modal-support-user'));
+    closeModal(document.getElementById('modal-support-case'));
 }
 
 // --- Toasts ---

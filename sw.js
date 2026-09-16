@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtracker-v24';
+const CACHE_NAME = 'subtracker-v26';
 const urlsToCache = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const urlsToCache = [
   './js/components/splitBill.js',
   './js/services/auth.js',
   './js/services/database.js',
+  './js/services/support.js',
   './js/utils/helpers.js',
   './js/utils/access.js',
   './js/utils/presets.js',

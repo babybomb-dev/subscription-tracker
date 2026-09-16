@@ -108,14 +108,17 @@ export async function hardDeleteCanceledSubscription(docId) {
 }
 
 // User Settings
-export async function createUserAccountDocument(userId, email) {
+export async function createUserAccountDocument(userId, email, displayName = '') {
     const docRef = doc(db, 'users', userId);
-    return await setDoc(docRef, {
+    const normalizedDisplayName = typeof displayName === 'string' ? displayName.trim() : '';
+    const accountData = {
         role: 'user',
         plan: 'free',
         email: email || null,
         createdAt: serverTimestamp()
-    });
+    };
+    if (normalizedDisplayName) accountData.displayName = normalizedDisplayName;
+    return await setDoc(docRef, accountData, { merge: true });
 }
 
 export async function saveUserSettings(userId, settings) {
@@ -150,6 +153,24 @@ export async function syncAuthenticatedUserEmailIfMissing() {
         if (!isMissingOrEmpty) return false;
 
         transaction.update(docRef, { email: normalizedEmail });
+        return true;
+    });
+}
+
+export async function syncAuthenticatedUserDisplayNameIfMissing() {
+    const authenticatedUser = auth.currentUser;
+    const displayName = typeof authenticatedUser?.displayName === 'string'
+        ? authenticatedUser.displayName.trim()
+        : '';
+    if (!authenticatedUser || !displayName) return false;
+
+    const docRef = doc(db, 'users', authenticatedUser.uid);
+    return await runTransaction(db, async (transaction) => {
+        const docSnap = await transaction.get(docRef);
+        if (!docSnap.exists()) return false;
+        const storedName = docSnap.data().displayName;
+        if (typeof storedName === 'string' && storedName.trim()) return false;
+        transaction.update(docRef, { displayName });
         return true;
     });
 }
