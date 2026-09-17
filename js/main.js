@@ -980,6 +980,7 @@ function ensureSupportCaseListener() {
         supportCasesError = error || null;
         supportCases = error ? [] : cases;
         renderSupportSurfaces();
+        if (isAdmin()) renderManagementUsers('admin');
     });
 }
 
@@ -1005,14 +1006,18 @@ function getSupportMetrics() {
     };
 }
 
-function supportCaseRowMarkup(caseItem, compact = false) {
+function supportCaseRowMarkup(caseItem, compact = false, showOrigin = false) {
     const userIdentity = getSupportIdentity(caseItem.userId);
     const status = SUPPORT_STATUS_META[caseItem.status] || SUPPORT_STATUS_META.open;
     const assignee = caseItem.assignedTo ? getSupportIdentity(caseItem.assignedTo).primary : 'ยังไม่มอบหมาย';
-    return `<article class="support-case-row"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div class="min-w-0"><div class="flex flex-wrap items-center gap-1.5"><p class="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-100 truncate">${escapeHTML(caseItem.subject || '-')}</p><span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${status.className}">${status.label}</span>${caseItem.priority === 'high' ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">สูง</span>' : ''}</div><p class="mt-1 text-[10px] text-slate-500 truncate">${escapeHTML(userIdentity.primary)} · ${escapeHTML(SUPPORT_CATEGORY_LABELS[caseItem.category] || caseItem.category || '-')} · ${escapeHTML(assignee)}</p>${compact ? '' : `<p class="mt-1 text-[10px] text-slate-400">อัปเดต ${formatJoinedDate(caseItem.updatedAt)}</p>`}</div><button type="button" data-open-support-case="${escapeHTML(caseItem.id)}" class="support-secondary-button shrink-0">ดูเคส</button></div></article>`;
+    const creatorRole = { user: 'User', staff: 'Staff', admin: 'Admin' }[caseItem.createdByRole] || '-';
+    const summary = showOrigin
+        ? `${escapeHTML(SUPPORT_CATEGORY_LABELS[caseItem.category] || caseItem.category || '-')} · สร้าง ${formatJoinedDate(caseItem.createdAt)} · โดย ${creatorRole}`
+        : `${escapeHTML(userIdentity.primary)} · ${escapeHTML(SUPPORT_CATEGORY_LABELS[caseItem.category] || caseItem.category || '-')} · ${escapeHTML(assignee)}`;
+    return `<article class="support-case-row"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div class="min-w-0"><div class="flex flex-wrap items-center gap-1.5"><p class="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-100 truncate">${escapeHTML(caseItem.subject || '-')}</p><span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${status.className}">${status.label}</span>${caseItem.priority === 'high' ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">สูง</span>' : ''}</div><p class="mt-1 text-[10px] text-slate-500 truncate">${summary}</p>${compact ? '' : `<p class="mt-1 text-[10px] text-slate-400">อัปเดต ${formatJoinedDate(caseItem.updatedAt)}</p>`}</div><button type="button" data-open-support-case="${escapeHTML(caseItem.id)}" class="support-secondary-button shrink-0">ดูเคส</button></div></article>`;
 }
 
-function renderSupportCaseList(containerId, cases, emptyText = 'ยังไม่มีเคสที่ต้องตรวจสอบ') {
+function renderSupportCaseList(containerId, cases, emptyText = 'ยังไม่มีเคสที่ต้องตรวจสอบ', showOrigin = false) {
     const container = document.getElementById(containerId);
     if (!container) return;
     if (supportCasesLoading) {
@@ -1023,7 +1028,7 @@ function renderSupportCaseList(containerId, cases, emptyText = 'ยังไม�
         container.innerHTML = supportLoadErrorMarkup();
         return;
     }
-    container.innerHTML = cases.length ? cases.map(item => supportCaseRowMarkup(item)).join('') : `<p class="support-empty">${escapeHTML(emptyText)}</p>`;
+    container.innerHTML = cases.length ? cases.map(item => supportCaseRowMarkup(item, false, showOrigin)).join('') : `<p class="support-empty">${escapeHTML(emptyText)}</p>`;
 }
 
 function renderSupportBreakdown(containerId, entries, total, accent = 'bg-sky-500') {
@@ -1170,6 +1175,12 @@ function openSupportUserDetail(userId) {
     openModal(document.getElementById('modal-support-user'));
 }
 
+function openSupportUserCases(userId) {
+    if (!isAdmin()) return;
+    openSupportUserDetail(userId);
+    requestAnimationFrame(() => document.getElementById('support-user-case-count')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+}
+
 function openSupportCaseComposer(userId) {
     if ((!isStaff() && !isAdmin()) || !managementUsers.some(user => user.id === userId)) return;
     openSupportUserDetail(userId);
@@ -1221,7 +1232,7 @@ function renderSupportUserDetail() {
     const userCases = supportCases.filter(item => item.userId === user.id);
     const count = document.getElementById('support-user-case-count');
     if (count) count.textContent = `${userCases.length} เคส`;
-    renderSupportCaseList('support-user-cases', userCases);
+    renderSupportCaseList('support-user-cases', userCases, 'ยังไม่มีเคสที่ต้องตรวจสอบ', isAdmin());
     const title = document.getElementById('support-user-title');
     if (title) title.textContent = identity.primary;
     const email = document.getElementById('support-user-header-email');
@@ -1322,12 +1333,36 @@ function renderSupportNotes() {
     }).join('') : '<p class="support-empty">ยังไม่มีบันทึกในเคสนี้</p>';
 }
 
+function getSupportCaseSummariesByUser() {
+    const summaries = new Map();
+    for (const item of supportCases) {
+        if (!item.userId) continue;
+        let summary = summaries.get(item.userId);
+        if (!summary) {
+            summary = { totalCases: 0, openCases: 0, inProgressCases: 0, resolvedCases: 0, hasUserCreatedOpenCase: false };
+            summaries.set(item.userId, summary);
+        }
+        summary.totalCases++;
+        if (item.status === 'open') {
+            summary.openCases++;
+            if (item.createdByRole === 'user') summary.hasUserCreatedOpenCase = true;
+        } else if (item.status === 'in_progress') {
+            summary.inProgressCases++;
+        } else if (item.status === 'resolved') {
+            summary.resolvedCases++;
+        }
+    }
+    return summaries;
+}
+
 function renderManagementUsers(panel) {
     const tbody = document.getElementById(`${panel}-user-list`);
     if (!tbody) return;
     const search = (document.getElementById(`${panel}-user-search`)?.value || '').trim().toLowerCase();
     const roleFilter = document.getElementById(`${panel}-role-filter`)?.value || 'all';
     const planFilter = document.getElementById(`${panel}-plan-filter`)?.value || 'all';
+    const supportSummaries = panel === 'admin' ? getSupportCaseSummariesByUser() : null;
+    const supportReady = !supportCasesLoading && !supportCasesError;
 
     const users = managementUsers.filter(user => {
         const access = resolveUserAccess(user);
@@ -1358,7 +1393,14 @@ function renderManagementUsers(panel) {
         const canChangeRole = panel === 'admin' && user.id !== currentUser.uid && access.role !== 'admin';
         const canOverridePremium = panel === 'admin' && user.id !== currentUser.uid && access.role !== 'admin';
         const detailAction = `<button type="button" data-open-support-user="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--detail"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>ดูรายละเอียด</span></button>`;
-        const caseAction = `<button type="button" data-create-support-case="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--case" title="สร้างเคส Support สำหรับบัญชีนี้เพื่อบันทึกและติดตามปัญหา"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>เปิดเคส Support</span></button>`;
+        const supportSummary = supportSummaries?.get(user.id);
+        const totalCases = supportSummary?.totalCases || 0;
+        const pendingCases = (supportSummary?.openCases || 0) + (supportSummary?.inProgressCases || 0);
+        const caseAction = panel === 'admin' && !supportReady
+            ? `<button type="button" class="admin-user-action admin-user-action--case" disabled title="${supportCasesError ? 'ไม่สามารถโหลดข้อมูล Support ได้' : 'กำลังโหลดข้อมูล Support'}"><i class="fa-solid fa-headset" aria-hidden="true"></i><span>Support · …</span></button>`
+            : panel === 'admin' && totalCases
+            ? `<button type="button" data-open-support-user-cases="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--case" title="ดู Support ${totalCases} เคส${pendingCases ? ` · ${pendingCases} เคสที่ต้องดำเนินการ` : ''}" aria-label="Support ${totalCases} เคส${pendingCases ? ` มี ${pendingCases} เคสที่ต้องดำเนินการ` : ''}"><i class="fa-solid fa-headset" aria-hidden="true"></i><span>Support · ${totalCases} เคส</span>${pendingCases ? '<span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true"></span>' : ''}</button>`
+            : `<button type="button" data-create-support-case="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--case" title="สร้างเคส Support สำหรับบัญชีนี้เพื่อบันทึกและติดตามปัญหา"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>เปิดเคส Support</span></button>`;
         let action = panel === 'staff' ? `<div class="admin-user-action-group">${detailAction}${access.role !== 'admin' ? caseAction : ''}</div>` : '';
         let roleAction = '';
         if (canChangeRole && access.role === 'user') {
@@ -1377,8 +1419,11 @@ function renderManagementUsers(panel) {
         const reviewReasons = getAccountReviewReasons(user);
         const reviewBadge = reviewReasons.length ? `<div class="mt-1 text-[9px] font-bold text-amber-600 dark:text-amber-400">ควรตรวจสอบ · ${escapeHTML(reviewReasons.join(' / '))}</div>` : '<div class="mt-1 text-[9px] font-medium text-emerald-600 dark:text-emerald-400">ข้อมูลบัญชีพร้อมใช้งาน</div>';
         const adminQuality = identity.qualityLabel === 'ยังไม่มีชื่อที่แสดง' ? ''
-            : `<div class="mt-1 text-[9px] font-medium ${identity.reviewReasons.length ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}">${escapeHTML(identity.qualityLabel)}</div>`;
-        const accountCell = `<td class="py-2 px-3"><div class="font-medium max-w-[190px] truncate" title="${escapeHTML(identity.primary)}">${escapeHTML(identity.primary)}</div>${identity.secondary ? `<div class="text-xs text-slate-400 max-w-[190px] truncate" title="${escapeHTML(identity.secondary)}">${escapeHTML(identity.secondary)}</div>` : ''}${panel === 'staff' ? reviewBadge : adminQuality}</td>`;
+            : `<span class="text-[9px] font-medium ${identity.reviewReasons.length ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}">${escapeHTML(identity.qualityLabel)}</span>`;
+        const newSupportHint = supportReady && supportSummary?.hasUserCreatedOpenCase
+            ? '<span class="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-400"><span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true"></span>มีเรื่องแจ้งใหม่</span>' : '';
+        const adminIdentityMeta = adminQuality || newSupportHint ? `<div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">${adminQuality}${newSupportHint}</div>` : '';
+        const accountCell = `<td class="py-2 px-3"><div class="font-medium max-w-[190px] truncate" title="${escapeHTML(identity.primary)}">${escapeHTML(identity.primary)}</div>${identity.secondary ? `<div class="text-xs text-slate-400 max-w-[190px] truncate" title="${escapeHTML(identity.secondary)}">${escapeHTML(identity.secondary)}</div>` : ''}${panel === 'staff' ? reviewBadge : adminIdentityMeta}</td>`;
         tr.innerHTML = panel === 'admin' ? `
             ${accountCell}<td class="py-2 px-3 font-bold ${roleColors}">${escapeHTML(access.role)}</td><td class="py-2 px-3">${planBadge}</td><td class="py-2 px-3 capitalize">${!isSystemAccount && access.plan === 'premium' ? escapeHTML(getPremiumPlanLabel(access.premiumPlan)) : '-'}</td><td class="py-2 px-3 whitespace-nowrap">${formatJoinedDate(getUserCreatedAt(user))}</td><td class="py-2 px-3 text-right">${action}</td>
         ` : `
@@ -2387,6 +2432,11 @@ function setupEventListeners() {
         const createCaseButton = event.target.closest('[data-create-support-case]');
         if (createCaseButton) {
             openSupportCaseComposer(createCaseButton.dataset.createSupportCase);
+            return;
+        }
+        const userCasesButton = event.target.closest('[data-open-support-user-cases]');
+        if (userCasesButton) {
+            openSupportUserCases(userCasesButton.dataset.openSupportUserCases);
             return;
         }
         const userButton = event.target.closest('[data-open-support-user]');
