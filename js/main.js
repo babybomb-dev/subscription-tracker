@@ -1836,6 +1836,7 @@ function openMySupportComposer() {
 async function submitMySupportCase(event) {
     event.preventDefault();
     if (!isUser() || !currentUser || mySupportSubmitting) return;
+    const form = event.currentTarget;
     let subject;
     let category;
     let description;
@@ -1852,13 +1853,26 @@ async function submitMySupportCase(event) {
     mySupportSubmitting = true;
     if (button) button.disabled = true;
     try {
-        await createOwnSupportCase({ subject, category, description });
-        event.currentTarget.reset();
-        closeModal(document.getElementById('modal-user-support-create'));
-        showToast('ส่งเรื่องให้เจ้าหน้าที่แล้ว', 'success');
-    } catch (error) {
-        console.error('User Support creation failed:', error);
-        showToast('ไม่สามารถส่งเรื่องให้เจ้าหน้าที่ได้ กรุณาลองใหม่อีกครั้ง', 'error');
+        try {
+            await createOwnSupportCase({ subject, category, description });
+        } catch (error) {
+            console.error('[Support] Case creation failed:', error);
+            showToast('ไม่สามารถส่งเรื่องให้เจ้าหน้าที่ได้ กรุณาลองใหม่อีกครั้ง', 'error');
+            return;
+        }
+
+        // The batch has committed; UI cleanup must not turn it into a write failure.
+        try {
+            form.reset();
+        } catch (error) {
+            console.error('[Support] Post-create form reset failed:', error);
+        }
+        try {
+            closeModal(document.getElementById('modal-user-support-create'));
+        } catch (error) {
+            console.error('[Support] Post-create modal close failed:', error);
+        }
+        showToast('ส่งเรื่องให้เจ้าหน้าที่เรียบร้อยแล้ว', 'success');
     } finally {
         mySupportSubmitting = false;
         if (button) button.disabled = false;
