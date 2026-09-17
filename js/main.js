@@ -665,7 +665,6 @@ function updateManagementUI() {
 function updateRoleBadges() {
     currentPremiumAccess = getLivePremiumAccess();
     const role = currentUserRole || 'user';
-    const isSystemAccount = role === 'admin' || role === 'staff';
     const roleText = role === 'admin' ? 'Admin' :
                      role === 'staff' ? 'Staff' : 'User';
                       
@@ -680,42 +679,24 @@ function updateRoleBadges() {
     }
     const planBadgeDesktop = document.getElementById('plan-badge-desktop');
     if (planBadgeDesktop) {
-        const activePremium = currentPremiumAccess.isPremiumActive;
-        planBadgeDesktop.textContent = isSystemAccount ? 'System' : activePremium ? `Premium · ${getPremiumPlanLabel(currentPremiumAccess.premiumPlan)}` : (currentPremiumAccess.isPremiumExpired ? 'Premium · Expired' : 'Free');
-        planBadgeDesktop.className = `text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${isSystemAccount ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' : activePremium ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : currentPremiumAccess.isPremiumExpired ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`;
+        planBadgeDesktop.textContent = '';
+        planBadgeDesktop.classList.add('hidden');
     }
     
     const badgeModal = document.getElementById('role-badge-modal');
     if (badgeModal) {
-        badgeModal.textContent = `${roleText} · ${isSystemAccount ? 'System' : currentPremiumAccess.isPremiumActive ? 'Premium' : currentPremiumAccess.isPremiumExpired ? 'Expired' : 'Free'}`;
+        badgeModal.textContent = roleText;
         badgeModal.className = `text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ml-2 ${roleClass}`;
     }
 
     const statusDetail = document.getElementById('premium-status-detail');
-    if (statusDetail) {
-        if (isSystemAccount) {
-            statusDetail.textContent = 'บัญชีระบบ';
-            statusDetail.className = 'mt-2 text-xs font-medium text-slate-400';
-        } else if (currentPremiumAccess.isPremiumActive) {
-            statusDetail.textContent = currentPremiumAccess.premiumPlan === 'lifetime'
-                ? `${getPremiumPlanLabel(currentPremiumAccess.premiumPlan)} · ใช้งานได้ตลอดชีพ`
-                : `${getPremiumPlanLabel(currentPremiumAccess.premiumPlan)} · ใช้งานถึง ${formatJoinedDate(currentPremiumAccess.premiumUntil)}`;
-            statusDetail.className = 'mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400';
-        } else if (currentPremiumAccess.isPremiumExpired) {
-            statusDetail.textContent = `${getPremiumPlanLabel(currentPremiumAccess.premiumPlan)} · หมดอายุ ${formatJoinedDate(currentPremiumAccess.premiumUntil)}`;
-            statusDetail.className = 'mt-2 text-xs font-semibold text-rose-600 dark:text-rose-400';
-        } else {
-            statusDetail.textContent = 'Free plan';
-            statusDetail.className = 'mt-2 text-xs font-medium text-slate-400';
-        }
-    }
+    if (statusDetail) statusDetail.classList.add('hidden');
 }
 
 function updatePremiumUpgradeUI() {
     const upgradeBtn = document.getElementById('btn-upgrade-premium');
     if (!upgradeBtn) return;
-    upgradeBtn.classList.toggle('hidden', currentPremiumAccess.isPremiumActive || isAdmin());
-    upgradeBtn.textContent = currentPremiumAccess.isPremiumExpired ? 'ต่ออายุ Premium' : 'อัปเกรดเป็น Premium';
+    upgradeBtn.classList.add('hidden');
 }
 
 const PREMIUM_PLAN_OPTIONS = Object.freeze({
@@ -819,8 +800,8 @@ const SUPPORT_STATUS_META = Object.freeze({
     resolved: { label: 'ตรวจสอบแล้ว', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' }
 });
 const SUPPORT_PRIORITY_LABELS = Object.freeze({ low: 'ต่ำ', normal: 'ปกติ', high: 'สูง' });
-const SUPPORT_CATEGORY_LABELS = Object.freeze({ account: 'บัญชี', subscription: 'Subscription', premium: 'Premium', billing: 'การเรียกเก็บเงิน', other: 'อื่น ๆ' });
-const USER_SUPPORT_CATEGORY_LABELS = Object.freeze({ account: 'บัญชีและการเข้าสู่ระบบ', subscription: 'รายการสมาชิก', premium: 'Premium', billing: 'การชำระเงิน', other: 'การใช้งานเว็บไซต์ / อื่น ๆ' });
+const SUPPORT_CATEGORY_LABELS = Object.freeze({ account: 'บัญชี', subscription: 'Subscription', premium: 'รายการสมาชิก', billing: 'การเรียกเก็บเงิน', other: 'อื่น ๆ' });
+const USER_SUPPORT_CATEGORY_LABELS = Object.freeze({ account: 'บัญชีและการเข้าสู่ระบบ', subscription: 'รายการสมาชิก', premium: 'รายการสมาชิก', billing: 'การชำระเงิน', other: 'การใช้งานเว็บไซต์ / อื่น ๆ' });
 const userSupportStatusLabel = status => status === 'resolved' ? 'แก้ไขแล้ว' : (SUPPORT_STATUS_META[status] || SUPPORT_STATUS_META.open).label;
 
 function getManagementUser(userId) {
@@ -835,7 +816,7 @@ function getAccountReviewReasons(user) {
     const access = resolveUserAccess(user);
     const identity = resolveUserIdentity(user);
     const reasons = [...identity.reviewReasons];
-    if (access.legacyPremium) reasons.push('ข้อมูล Premium แบบเดิม');
+    if (access.legacyPremium) reasons.push('ข้อมูลบัญชีแบบเดิม');
     return reasons;
 }
 
@@ -1077,11 +1058,10 @@ function renderSupportReports() {
     const adminSummary = document.getElementById('admin-report-summary');
     if (adminSummary && managementDataLoaded) {
         const systemMetrics = getAdminMetrics();
-        const adoption = systemMetrics.premium.total / Math.max(1, managementUsers.length) * 100;
-        const group = (title, entries) => `<section class="admin-report-group"><h3>${title}</h3><div class="grid grid-cols-2 lg:grid-cols-4 gap-2">${entries.map(([label, value]) => `<div class="admin-kpi"><p>${label}</p><strong>${value}</strong></div>`).join('')}</div></section>`;
+        const group = (title, entries) => `<section class="admin-report-group"><h3>${title}</h3><div class="grid grid-cols-2 ${entries.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-2">${entries.map(([label, value]) => `<div class="admin-kpi"><p>${label}</p><strong>${value}</strong></div>`).join('')}</div></section>`;
         adminSummary.innerHTML = group('ภาพรวมระบบ', [
             ['ผู้ใช้ทั้งหมด', managementUsers.length], ['Subscriptions', managementSubscriptions.length],
-            ['Active', systemMetrics.activeSubscriptions], ['Premium', `${systemMetrics.premium.total} · ${adoption.toFixed(1)}%`]
+            ['Active', systemMetrics.activeSubscriptions]
         ]) + group('ภาพรวม Support', [
             ['เคสทั้งหมด', metrics.total], ['รอตรวจสอบ', metrics.open],
             ['กำลังดำเนินการ', metrics.inProgress], ['ตรวจสอบแล้ว', metrics.resolved]
@@ -1116,12 +1096,7 @@ function renderSupportReports() {
             title: `${SUPPORT_STATUS_META[item.status]?.label || 'อัปเดตเคส'} · ${item.subject || '-'}`,
             detail: getSupportIdentity(item.userId).primary
         }));
-        const auditEvents = managementAuditLogs.map(log => ({
-            at: log.createdAt,
-            title: 'Premium Override',
-            detail: getSupportIdentity(log.targetUserId).primary
-        }));
-        const events = [...caseEvents, ...auditEvents].sort((a, b) => dateValue(b.at) - dateValue(a.at)).slice(0, 12);
+        const events = caseEvents.sort((a, b) => dateValue(b.at) - dateValue(a.at)).slice(0, 12);
         systemActivity.innerHTML = events.length ? events.map(item => `<div class="support-activity-row flex items-center justify-between gap-3"><div class="min-w-0"><p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${escapeHTML(item.title)}</p><p class="text-[10px] text-slate-500 truncate">${escapeHTML(item.detail)}</p></div><time class="text-[10px] text-slate-400 whitespace-nowrap">${formatJoinedDate(item.at)}</time></div>`).join('') : '<p class="support-empty">ยังไม่มีกิจกรรมระบบ</p>';
     }
 }
@@ -1238,7 +1213,7 @@ function renderSupportUserDetail() {
     const email = document.getElementById('support-user-header-email');
     if (email) email.textContent = identity.email || 'ไม่มีอีเมลในข้อมูลบัญชี';
     const badges = document.getElementById('support-user-header-badges');
-    if (badges) badges.innerHTML = `<span class="support-header-badge">${escapeHTML(access.role)}</span><span class="support-header-badge">${access.role === 'user' ? escapeHTML(access.plan) : 'System'}</span>`;
+    if (badges) badges.innerHTML = `<span class="support-header-badge">${escapeHTML(access.role)}</span>`;
 }
 
 function openSupportCaseDetail(caseId) {
@@ -1391,7 +1366,6 @@ function renderManagementUsers(panel) {
             ? `<span class="${access.isPremiumActive ? 'text-amber-600' : 'text-rose-600'} font-bold">Premium · ${escapeHTML(getPremiumPlanLabel(access.premiumPlan))}</span><div class="text-[10px] ${access.isPremiumActive ? 'text-emerald-500' : 'text-rose-500'}">${access.isPremiumActive ? 'Active' : 'Expired'}${access.premiumPlan !== 'lifetime' && access.premiumUntil ? ` · ${formatJoinedDate(access.premiumUntil)}` : ''}</div>`
             : '<span class="text-slate-500">Free</span>';
         const canChangeRole = panel === 'admin' && user.id !== currentUser.uid && access.role !== 'admin';
-        const canOverridePremium = panel === 'admin' && user.id !== currentUser.uid && access.role !== 'admin';
         const detailAction = `<button type="button" data-open-support-user="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--detail"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>ดูรายละเอียด</span></button>`;
         const supportSummary = supportSummaries?.get(user.id);
         const totalCases = supportSummary?.totalCases || 0;
@@ -1409,9 +1383,8 @@ function renderManagementUsers(panel) {
             roleAction = `<button type="button" data-change-role="user" data-user-id="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--demote"><i class="fa-solid fa-user" aria-hidden="true"></i><span>เปลี่ยนเป็น User</span></button>`;
         }
         if (panel === 'admin') {
-            const premiumAction = canOverridePremium ? `<button type="button" data-manage-premium="${escapeHTML(user.id)}" class="admin-user-action admin-user-action--premium"><i class="fa-solid fa-crown" aria-hidden="true"></i><span>จัดการ Premium</span></button>` : '';
-            const protectedBadge = !roleAction && !premiumAction ? '<span class="admin-protected-badge"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>ได้รับการป้องกัน</span></span>' : '';
-            action = `<div class="admin-user-action-group">${roleAction}${premiumAction}${detailAction}${canChangeRole ? caseAction : ''}${protectedBadge}</div>`;
+            const protectedBadge = !roleAction ? '<span class="admin-protected-badge"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>ได้รับการป้องกัน</span></span>' : '';
+            action = `<div class="admin-user-action-group">${roleAction}${detailAction}${canChangeRole ? caseAction : ''}${protectedBadge}</div>`;
         }
 
         const tr = document.createElement('tr');
@@ -1458,12 +1431,9 @@ function renderCompactUsers(containerId, users, premiumOnly = false) {
         const identity = resolveUserIdentity(user);
         const date = premiumOnly ? formatJoinedDate(user.premiumSince) : formatJoinedDate(getUserCreatedAt(user));
         const dateMarkup = premiumOnly || date !== '-' ? `<p class="text-[9px] text-slate-400 mt-0.5">${date}</p>` : '';
-        const planBadge = access.role === 'user'
-            ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${access.plan === 'premium' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'}">${access.plan === 'premium' ? 'Premium' : 'Free'}</span>`
-            : '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300">System</span>';
         return `<div class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
             <div class="min-w-0"><p class="text-xs md:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">${escapeHTML(identity.primary)}</p>${identity.secondary ? `<p class="text-[10px] md:text-xs text-slate-400 truncate">${escapeHTML(identity.secondary)}</p>` : ''}</div>
-            <div class="text-right shrink-0"><div class="flex justify-end gap-1"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${escapeHTML(access.role)}</span>${planBadge}</div>${dateMarkup}</div>
+            <div class="text-right shrink-0"><div class="flex justify-end gap-1"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${escapeHTML(access.role)}</span></div>${dateMarkup}</div>
         </div>`;
     }).join('');
 }
@@ -1974,8 +1944,9 @@ async function handleSupportCaseAction(action, button) {
 }
 
 function navigateToView(view) {
-    if (!canAccessView(view, currentUserRole)) {
-        showToast('ไม่มีสิทธิ์เข้าถึง', 'error');
+    const hiddenPremiumView = view === 'staff-premium' || view === 'admin-premium';
+    if (hiddenPremiumView || !canAccessView(view, currentUserRole)) {
+        if (!hiddenPremiumView) showToast('ไม่มีสิทธิ์เข้าถึง', 'error');
         const fallbackView = isStaff() ? 'staff-overview' : isAdmin() ? 'admin-overview' : 'dashboard';
         updateWorkspaceWidth(fallbackView);
         switchView(fallbackView);
@@ -2168,10 +2139,6 @@ function updateUI() {
 
     // 5. Render Components
     const handleQrClick = (sub) => {
-        if (!hasPremiumAccess()) {
-            showToast('Feature นี้สำหรับ Premium User เท่านั้น', 'error');
-            return;
-        }
         const currencyCode = (sub.currency || 'THB').toLowerCase();
         let thbPrice = parseFloat(sub.price);
         if (currencyCode !== 'thb') {
@@ -2239,6 +2206,8 @@ function updateUI() {
 
 // --- Event Listeners Setup ---
 function setupEventListeners() {
+    // Keep legacy case categories readable without offering Premium in new case forms.
+    document.querySelectorAll('#user-support-category option[value="premium"], #support-case-category option[value="premium"], #admin-case-category option[value="premium"]').forEach(option => option.remove());
     initFullCalendarControls();
     initSettings({
         getCategories: () => state.customCategories,
@@ -2709,10 +2678,6 @@ function setupEventListeners() {
     };
 
     const handleExportCSV = () => {
-        if (!hasPremiumAccess()) {
-            showToast('Feature นี้สำหรับ Premium User เท่านั้น', 'error');
-            return;
-        }
         if (!currentSubs || currentSubs.length === 0) {
             showToast('ไม่มีข้อมูลสำหรับส่งออก', 'error');
             return;
@@ -2754,11 +2719,6 @@ function setupEventListeners() {
     if (btnExportCsvDesktop) {
         btnExportCsvDesktop.addEventListener('click', handleExportCSV);
     }
-    const btnExportCsvModal = document.getElementById('btn-export-csv-modal');
-    if (btnExportCsvModal) {
-        btnExportCsvModal.addEventListener('click', handleExportCSV);
-    }
-
     // Controls
     document.getElementById('btn-cycle-month').addEventListener('click', () => {
         state.cycle = 'monthly';
@@ -2906,10 +2866,6 @@ function setupEventListeners() {
     // Split Bill Button (if any inside active subs)
     document.addEventListener('click', (e) => {
         if (e.target.closest('.btn-split-bill')) {
-            if (!hasPremiumAccess()) {
-                showToast('Feature นี้สำหรับ Premium User เท่านั้น', 'error');
-                return;
-            }
             const btn = e.target.closest('.btn-split-bill');
             const subId = btn.dataset.id;
             // Get sub object (the handler in main.js passes an ID string instead of full object when using delegated event listener)

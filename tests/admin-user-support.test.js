@@ -114,12 +114,12 @@ test('Staff management button and identity remain unchanged', () => {
     assert.doesNotMatch(row, /มีเรื่องแจ้งใหม่|data-open-support-user-cases/);
 });
 
-test('existing role, Premium, protected Admin, and search/filter actions remain', () => {
+test('role, protected Admin, search, and Support actions remain without Premium management', () => {
     const h = tableHarness();
     h.context.renderManagementUsers('admin');
     const userRow = h.row(h.adminBody, 'No Case');
     assert.match(userRow, /data-change-role="staff"/);
-    assert.match(userRow, /data-manage-premium="none"/);
+    assert.doesNotMatch(userRow, /data-manage-premium/);
     assert.match(userRow, /data-open-support-user="none"/);
     const adminRow = h.row(h.adminBody, 'Protected Admin');
     assert.match(adminRow, /ได้รับการป้องกัน/);

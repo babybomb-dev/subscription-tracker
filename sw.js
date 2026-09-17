@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtracker-v35';
+const CACHE_NAME = 'subtracker-v36';
 const urlsToCache = [
   './',
   './index.html',
