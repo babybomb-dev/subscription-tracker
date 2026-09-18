@@ -274,6 +274,11 @@
                     <button data-view="settings" class="nav-btn-mobile w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300" title="ตั้งค่า">
                         <i class="fa-solid fa-gear text-xs"></i>
                     </button>
+                    <button id="btn-user-logout-mobile"
+                        class="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-500"
+                        title="ออกจากระบบ">
+                        <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                    </button>
                 </div>
                 <div id="staff-mobile-actions" class="hidden items-center gap-2">
                     <button id="btn-staff-theme-mobile" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300" title="เปลี่ยนโหมด"><i class="fa-solid fa-moon text-xs"></i></button>
@@ -634,11 +639,11 @@
                 <!-- VIEW: CALENDAR -->
                 <div id="view-calendar" class="view-section space-y-6 hidden">
                     <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-calendar-days mr-2 text-indigo-500"></i> ตารางชำระเงิน</h2>
-                            <div class="flex gap-2">
+                            <div class="flex items-center gap-2">
                                 <button id="btn-full-cal-prev" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200"><i class="fa-solid fa-chevron-left"></i></button>
-                                <span id="full-cal-month-year" class="font-bold text-slate-800 dark:text-slate-200 flex items-center px-2 text-sm sm:text-base">มกราคม 2026</span>
+                                <span id="full-cal-month-year" class="font-bold text-slate-800 dark:text-slate-200 flex items-center px-2 text-sm sm:text-base whitespace-nowrap">มกราคม 2026</span>
                                 <button id="btn-full-cal-next" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-200"><i class="fa-solid fa-chevron-right"></i></button>
                             </div>
                         </div>
@@ -883,7 +888,7 @@
     </div>
 
     <!-- Mobile Add FAB -->
-    <button id="btn-add-mobile" class="lg:hidden fixed bottom-24 right-6 flex items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/40 border-4 border-slate-50 dark:border-slate-950 transition-transform active:scale-95 z-40" title="เพิ่มรายการ">
+    <button id="btn-add-mobile" class="hidden lg:hidden fixed bottom-24 right-6 flex items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/40 border-4 border-slate-50 dark:border-slate-950 transition-transform active:scale-95 z-40" title="เพิ่มรายการ">
         <i class="fa-solid fa-plus text-2xl"></i>
     </button>
 
