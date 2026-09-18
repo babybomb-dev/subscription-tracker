@@ -1,0 +1,193 @@
+SubTracker Project File Tree
+Repository: D:\subscription-tracker-github-sync
+Branch: main
+Source checkpoint (HEAD): ed099e4f93d0b3eac6a90654e37e774110b91463
+
+PROJECT TREE
+
+subscription-tracker-github-sync/
+├── .firebaserc
+├── .gitignore
+├── firebase-config.js
+├── firebase.json
+├── firestore.rules
+├── icon.svg
+├── index.html
+├── manifest.json
+├── PROJECT_GUIDE.md
+├── server.ps1
+├── style.css
+├── sw.js
+├── js/
+│   ├── main.js
+│   ├── pwa.js
+│   ├── components/
+│   │   ├── analytics.js
+│   │   ├── calendar.js
+│   │   ├── chart.js
+│   │   ├── history.js
+│   │   ├── notifications.js
+│   │   ├── settings.js
+│   │   ├── splitBill.js
+│   │   └── ui.js
+│   ├── services/
+│   │   ├── auth.js
+│   │   ├── database.js
+│   │   └── support.js
+│   └── utils/
+│       ├── access.js
+│       ├── helpers.js
+│       └── presets.js
+└── tests/
+    ├── admin-user-support.test.js
+    ├── support-submit.test.js
+    └── firestore/
+        ├── package-lock.json
+        ├── package.json
+        ├── support.rules.test.js
+        └── node_modules/ [excluded: installed dependencies]
+
+FILE PURPOSE QUICK MAP
+
+.firebaserc [CONFIG]
+- Firebase CLI project alias selection.
+
+.gitignore [CONFIG]
+- Excludes credentials, dependencies, caches, logs and editor files from Git.
+
+firebase-config.js [CONFIG]
+- Initializes Firebase app, Auth, Firestore and Google Auth provider. Configuration values are intentionally omitted here.
+
+firebase.json [CONFIG]
+- Points Firebase CLI at firestore.rules.
+
+firestore.rules [CONFIG]
+- Firestore authorization rules for users, subscriptions, payments, Support and compatibility data.
+
+icon.svg [ACTIVE]
+- App icon referenced by the HTML and web manifest.
+
+index.html [ACTIVE]
+- Main application HTML shell, role workspaces, forms, navigation and modals; loads js/main.js.
+
+manifest.json [CONFIG]
+- PWA name, launch URL, display mode, theme and icon metadata.
+
+PROJECT_GUIDE.md [DOCUMENTATION]
+- Existing, intentionally untracked technical guide for manual and AI-assisted changes; untouched by this task.
+
+server.ps1 [STATUS UNCERTAIN]
+- Local PowerShell HTTP server helper. Present in the repository; no runtime import establishes whether it is currently used.
+
+style.css [ACTIVE]
+- Global, responsive and component-specific styling loaded by index.html.
+
+sw.js [ACTIVE]
+- Service Worker cache and fetch behavior; registered by js/pwa.js.
+
+js/main.js [ACTIVE]
+- Main JavaScript entry; initializes the app and coordinates auth, roles, state, routing, event handlers and rendering.
+
+js/pwa.js [ACTIVE]
+- Registers sw.js and handles PWA installation prompt.
+
+js/components/analytics.js [ACTIVE]
+- Renders analytics and Year in Review.
+
+js/components/calendar.js [ACTIVE]
+- Renders compact/full subscription calendars and navigation controls.
+
+js/components/chart.js [ACTIVE]
+- Renders subscription spending chart using Chart.js.
+
+js/components/history.js [ACTIVE]
+- Renders payment history and latest transactions.
+
+js/components/notifications.js [ACTIVE]
+- Handles browser notification permission and upcoming-payment alerts.
+
+js/components/settings.js [ACTIVE]
+- Binds Settings controls, theme/accent selection and notification preferences.
+
+js/components/splitBill.js [ACTIVE]
+- Calculates per-person bill share and builds PromptPay QR display.
+
+js/components/ui.js [ACTIVE]
+- Handles theme, views, modals, toasts and subscription list rendering.
+
+js/services/auth.js [ACTIVE]
+- Firebase Authentication wrappers for login, registration, Google sign-in, logout and profile changes.
+
+js/services/database.js [ACTIVE]
+- Firestore subscriptions, users/settings, payment history and management data operations. Also retains compatibility helpers for canceled subscriptions and Premium.
+
+js/services/support.js [ACTIVE]
+- Firestore Support case/note creation, listeners and status workflow for User, Staff and Admin.
+
+js/utils/access.js [ACTIVE]
+- Role/view access and identity normalization; retains legacy Premium role/plan interpretation inside an actively imported module.
+
+js/utils/helpers.js [ACTIVE]
+- Currency, billing-date, category, logo, PromptPay and calendar-link helpers.
+
+js/utils/presets.js [ACTIVE]
+- Preset subscription data used by the add-subscription UI.
+
+tests/admin-user-support.test.js [TEST]
+- Checks Admin user-row Support actions, case indicators and related UI behavior.
+
+tests/support-submit.test.js [TEST]
+- Checks user Support submission, error handling, duplicate-submit prevention and listener behavior.
+
+tests/firestore/package-lock.json [CONFIG]
+- Locked dependency versions for the Firestore rules test package; not runtime application code.
+
+tests/firestore/package.json [CONFIG]
+- Defines the Firestore rules test script and development dependencies.
+
+tests/firestore/support.rules.test.js [TEST]
+- Emulator tests for Support ownership, atomic creation, notes and Staff/Admin workflow permissions.
+
+DIRECTORY PURPOSES
+
+js/components/
+- Browser UI renderers and interactions. Keep visual logic here when it can be separated from app-wide orchestration.
+
+js/services/
+- Firebase Auth and Firestore access functions. Data queries and writes belong here.
+
+js/utils/
+- Shared pure helpers, role/access interpretation and preset data.
+
+tests/
+- Node tests for application behavior.
+
+tests/firestore/
+- Firestore emulator rules tests and their local package metadata. node_modules contains installed dependencies and is excluded.
+
+IMPORTANT ENTRY POINTS
+
+Main HTML entry: index.html
+Main JavaScript entry: js/main.js (module script in index.html)
+Firebase initialization: firebase-config.js
+Firestore data service: js/services/database.js
+Support service: js/services/support.js
+Access/role logic: js/utils/access.js, coordinated by js/main.js
+PWA registration: js/pwa.js
+Service Worker: sw.js
+Firestore Rules: firestore.rules
+Main tests: tests/support-submit.test.js, tests/admin-user-support.test.js, tests/firestore/support.rules.test.js
+
+ACTIVE VS LEGACY NOTES
+
+- The file-level status is [ACTIVE] for database.js and access.js because current js/main.js imports them. Their Premium migration/purchase/override and canceled-subscription helper functions are retained compatibility code; this does not make the entire files legacy.
+- No separate file in this tree can be reliably labeled wholly [LEGACY / COMPATIBILITY].
+- server.ps1 has [STATUS UNCERTAIN] because repository imports do not establish usage.
+- The current user-facing roles are User, Staff and Admin. Premium fields and functions remain for compatibility.
+
+EXCLUSIONS AND COUNT
+
+Meaningful files indexed: 33 (12 root files, 16 JavaScript files under js/, 5 files under tests/).
+Project directories indexed: js/, js/components/, js/services/, js/utils/, tests/, tests/firestore/ (6).
+Present but excluded: tests/firestore/node_modules/ and firestore-debug.log.
+Other excluded noise if present: .git/, coverage/, dist/, build/, cache and editor directories, temporary files and OS metadata.
