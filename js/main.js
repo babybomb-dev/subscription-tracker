@@ -1956,6 +1956,11 @@ function navigateToView(view) {
     }
     updateWorkspaceWidth(view);
     switchView(view);
+    const mobileAddBtn = document.getElementById('btn-add-mobile');
+    const showMobileAdd = view === 'dashboard' || view === 'list';
+    if (mobileAddBtn) {
+        mobileAddBtn.classList.toggle('hidden', !showMobileAdd);
+    }
     if (view.startsWith('admin-')) loadManagementUsers('admin');
     if (view.startsWith('staff-')) loadManagementUsers('staff');
     return true;
@@ -2304,7 +2309,8 @@ function setupEventListeners() {
         document.getElementById('btn-logout-desktop'), document.getElementById('btn-logout-mobile'),
         document.getElementById('btn-staff-logout-desktop'), document.getElementById('btn-staff-logout-mobile'),
         document.getElementById('btn-staff-logout-settings'), document.getElementById('btn-admin-logout-desktop'),
-        document.getElementById('btn-admin-logout-mobile'), document.getElementById('btn-admin-logout-settings')
+        document.getElementById('btn-admin-logout-mobile'), document.getElementById('btn-admin-logout-settings'),
+        document.getElementById('btn-user-logout-mobile'),
     ];
     logoutBtns.forEach(btn => {
         if (btn) btn.addEventListener('click', logout);
